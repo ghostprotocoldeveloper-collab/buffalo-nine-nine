@@ -1,0 +1,1532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="A Reigns-style swipe game at an RCMP detachment in Richmond, BC. Keep four standings balanced, build files, jail villains, and rise from Constable to Inspector.">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font:14px/1.4 system-ui,-apple-system,sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Richmond Nine-Nine</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: night-shift desk at Buffalo Detachment (Richmond, BC) seen from above. Meters + case chip on top, the line of dialogue set like a teleplay, a 3D case-file card you swipe. Paper "file folder" sheets for the guide, case board and posting report. Single dark look by choice. */
+:root{
+  --ink:#0e1513;        /* detachment at 2am */
+  --paper:#f1e8d4;      /* typed paper */
+  --sheet:#efe4c8;      /* manila folder sheet */
+  --sheet-ink:#1d1a14;
+  --amber:#f2a33a;      /* desk lamp */
+  --serge:#c8302c;      /* red serge / stamp ink */
+  --muted:#8a9e96;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --type:'Courier Prime','Courier New',Courier,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--ink);color:var(--paper);font-family:var(--type);overflow:hidden;-webkit-user-select:none;user-select:none}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;outline:none}
+#gl:active{cursor:grabbing}
+#gl:focus-visible{box-shadow:inset 0 0 0 3px var(--amber)}
+.vignette{position:fixed;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(5,9,8,.82) 0,rgba(5,9,8,.55) calc(env(safe-area-inset-bottom,0px) + 40px),rgba(5,9,8,0) calc(env(safe-area-inset-bottom,0px) + 90px)),radial-gradient(120% 90% at 50% 55%,transparent 45%,rgba(5,9,8,.78) 100%)}
+.hud{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 10px)}
+.top{width:100%;max-width:420px;display:flex;flex-direction:column;gap:6px}
+.meters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:rgba(14,21,19,.84);border:1px solid rgba(241,232,212,.12);border-radius:6px;padding:8px 6px 6px}
+.meter{display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+.meter.hl .ico-full,.meter.hl .ico-empty{animation:pulse 1s ease-in-out infinite}
+.meter.hl .ico-empty{stroke:var(--amber)}
+.meter.hl .lbl{color:var(--amber)}
+.meter svg{width:34px;height:34px;overflow:visible}
+.ico-empty{fill:none;stroke:#46574f;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.ico-full{fill:rgba(242,163,58,.35);stroke:var(--amber);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
+.meter.up .ico-full{stroke:#fff3c4;fill:rgba(255,243,196,.5)}
+.meter.down .ico-full{stroke:var(--serge);fill:none}
+.meter.danger .ico-full{stroke:var(--serge);fill:none;animation:pulse .8s ease-in-out infinite}
+.meter.danger .ico-empty{stroke:#7a2a24;animation:pulse .8s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+.meter .lbl{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.dot{position:absolute;top:-3px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--paper);opacity:0;transform:scale(.4);transition:opacity .15s,transform .15s}
+.dot.on{opacity:1;transform:scale(1)}
+.dot.big{width:10px;height:10px;margin-left:-5px;top:-5px}
+.bar{display:flex;gap:6px}
+.btn{pointer-events:auto;font:inherit;color:var(--paper);background:rgba(14,21,19,.84);border:1px solid rgba(241,232,212,.18);border-radius:6px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--amber)}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+#caseChip{flex:1;min-width:0;display:flex;align-items:center;gap:8px;text-align:left}
+#caseChip .k{font-family:var(--display);font-weight:800;letter-spacing:.12em;font-size:12px;color:var(--amber);text-transform:uppercase;white-space:nowrap}
+#caseChip .n{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.pips{display:flex;gap:3px;flex:none}
+.pip{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--amber)}
+.pip.on{background:var(--amber)}
+.tag{font-family:var(--display);font-weight:900;font-size:11px;letter-spacing:.12em;color:#fff;background:var(--serge);padding:1px 6px;border-radius:3px;flex:none}
+#helpBtn{font-family:var(--display);font-weight:900;font-size:16px;width:38px;padding:4px 0}
+.script{width:100%;max-width:440px;min-height:8.6em;display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:10px;text-align:center;position:relative}
+.script::before{content:"";position:absolute;inset:-6px -40px -14px;background:radial-gradient(closest-side,rgba(8,12,11,.8) 55%,rgba(8,12,11,0) 100%);z-index:-1;pointer-events:none}
+.speaker{font-weight:700;font-size:14px;letter-spacing:.08em;color:var(--amber)}
+.speaker em{font-style:normal;color:var(--muted);font-weight:400}
+#q{margin:0;font-size:clamp(14px,1.6vh + 6px,17.5px);line-height:1.42;max-width:36ch;text-wrap:balance;text-shadow:0 1px 2px #000,0 0 10px rgba(0,0,0,.95);transition:opacity .25s}
+#q.fade{opacity:0}
+#slot{flex:1;width:100%;min-height:200px}
+footer{display:flex;justify-content:space-between;align-items:baseline;width:100%;max-width:420px;gap:10px;text-shadow:0 1px 2px #000,0 0 8px rgba(0,0,0,.9);font-family:var(--display);font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+footer #when{color:var(--paper);font-size:18px}
+footer .hint{font-family:var(--type);font-weight:400;letter-spacing:0;text-transform:none;font-size:12px;text-align:center}
+#toasts{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 44px);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;padding-inline:16px}
+.toast{background:var(--sheet);color:var(--sheet-ink);font-weight:700;font-size:13px;padding:7px 12px;border-radius:4px;border-left:5px solid var(--serge);box-shadow:0 6px 20px rgba(0,0,0,.5);max-width:360px;animation:tin .3s ease-out,tout .4s ease-in 2.8s forwards}
+.toast b{font-family:var(--display);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--serge);margin-right:6px}
+@keyframes tin{from{transform:translateY(10px);opacity:0}}
+@keyframes tout{to{opacity:0;transform:translateY(-6px)}}
+/* sheets */
+.modal{position:fixed;inset:0;background:rgba(5,9,8,.72);display:flex;align-items:center;justify-content:center;z-index:20;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 16px)}
+.sheet{background:var(--sheet);color:var(--sheet-ink);width:100%;max-width:540px;max-height:100%;overflow:auto;border-radius:4px 14px 4px 4px;box-shadow:0 20px 60px rgba(0,0,0,.6);padding:22px 22px 24px;position:relative;-webkit-user-select:text;user-select:text}
+.sheet::before{content:"";position:absolute;top:0;left:22px;width:120px;height:6px;background:var(--serge)}
+.sheet h2{font-family:var(--display);font-weight:900;font-size:34px;line-height:1;letter-spacing:.02em;margin:6px 0 4px;text-transform:uppercase;text-wrap:balance}
+.sheet h3{font-family:var(--display);font-weight:900;font-size:15px;letter-spacing:.16em;text-transform:uppercase;margin:22px 0 8px;padding-bottom:4px;border-bottom:2px solid var(--sheet-ink)}
+.sheet p{margin:0 0 10px;line-height:1.5;font-size:14px;max-width:62ch}
+.eyebrow{font-weight:700;font-size:12px;letter-spacing:.1em;color:#7a2a1c;text-transform:uppercase}
+.x{position:absolute;top:12px;right:12px;background:none;border:1px solid rgba(29,26,20,.3);border-radius:50%;width:34px;height:34px;font-size:18px;cursor:pointer;color:var(--sheet-ink)}
+.x:focus-visible,.primary:focus-visible{outline:2px solid var(--serge);outline-offset:2px}
+.legend{display:grid;gap:10px}
+.lg{display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:start}
+.lg svg{width:40px;height:40px;fill:rgba(200,48,44,.18);stroke:var(--sheet-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.lg b{font-family:var(--display);font-weight:900;font-size:18px;letter-spacing:.06em;text-transform:uppercase;display:block}
+.lg span{font-size:13.5px;line-height:1.45}
+.rows{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 10px;background:rgba(255,255,255,.35);border:1px solid rgba(29,26,20,.14);border-radius:4px}
+.row .t{font-family:var(--display);font-weight:900;font-size:18px;letter-spacing:.04em;text-transform:uppercase;min-width:0}
+.row .d{grid-column:1/-1;font-size:13px;line-height:1.4}
+.row.locked{opacity:.55}
+.pill{font-family:var(--display);font-weight:900;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:3px;align-self:start;white-space:nowrap;border:1.5px solid currentColor}
+.pill.jailed{background:var(--sheet-ink);color:var(--sheet);border-color:var(--sheet-ink)}
+.pill.hot{color:var(--serge)}
+.ev{display:flex;gap:4px;grid-column:1/-1}
+.ev i{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--sheet-ink)}
+.ev i.on{background:var(--sheet-ink)}
+.medals{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.medal{display:grid;grid-template-rows:auto auto 1fr;gap:4px;padding:10px;background:rgba(255,255,255,.35);border:1px solid rgba(29,26,20,.14);border-radius:4px}
+.ribbon{height:16px;border-radius:2px;border:1px solid rgba(0,0,0,.25)}
+.medal b{font-family:var(--display);font-weight:900;font-size:15px;line-height:1.05;text-transform:uppercase;letter-spacing:.03em}
+.medal span{font-size:12px;line-height:1.35}
+.medal.locked .ribbon{filter:grayscale(1);opacity:.35}
+.medal.locked b{opacity:.55}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stat{padding:8px 10px;border:1px solid rgba(29,26,20,.18);border-radius:4px}
+.stat b{display:block;font-family:var(--display);font-weight:900;font-size:24px;font-variant-numeric:tabular-nums}
+.stat span{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.primary{font-family:var(--display);font-weight:900;font-size:18px;letter-spacing:.12em;text-transform:uppercase;background:var(--serge);color:#fff;border:0;border-radius:4px;padding:12px 18px;margin-top:16px;cursor:pointer;width:100%}
+.unl{margin:0;padding-left:18px;font-size:14px;line-height:1.6}
+.btn-danger,.ghost{font-family:var(--display);font-weight:900;font-size:15px;letter-spacing:.1em;text-transform:uppercase;border-radius:4px;padding:10px 14px;cursor:pointer}
+.btn-danger{background:transparent;color:var(--serge);border:2px solid var(--serge)}
+.btn-danger.solid{background:var(--serge);color:#fff}
+.ghost{background:transparent;color:var(--sheet-ink);border:2px solid rgba(29,26,20,.35)}
+.btn-danger:focus-visible,.ghost:focus-visible{outline:2px solid var(--sheet-ink);outline-offset:2px}
+.confirm-row{display:flex;flex-wrap:wrap;gap:8px}
+.modal[hidden],#resetConfirm[hidden],.btn-danger[hidden]{display:none}
+#resetConfirm{border:2px dashed var(--serge);border-radius:4px;padding:12px;margin-top:4px}
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.person{display:flex;flex-direction:column;gap:3px;padding:8px;background:rgba(255,255,255,.35);border:1px solid rgba(29,26,20,.14);border-radius:4px;min-width:0}
+.person img,.person .ph{width:100%;aspect-ratio:1;border-radius:3px;display:block;max-width:100%}
+.person .ph{background:#9aa39f;color:#e9e4d6;font-family:var(--display);font-weight:900;font-size:48px;display:flex;align-items:center;justify-content:center}
+.person b{font-family:var(--display);font-weight:900;font-size:15px;line-height:1.05;text-transform:uppercase;letter-spacing:.03em}
+.person em{font-style:normal;font-size:11px;font-weight:700;color:#7a2a1c}
+.person span{font-size:12px;line-height:1.35}
+.person small{font-size:11px;opacity:.7}
+.person.locked{opacity:.6}
+@media (max-width:520px){footer .hint{display:none}}
+@media (max-height:640px){.script{min-height:7.6em;padding-top:6px}#q{font-size:14px}.meter svg{width:28px;height:28px}}
+.script.shine .speaker{color:#ffd36b;text-shadow:0 0 12px rgba(255,200,90,.45)}
+@media (prefers-reduced-motion:reduce){.meter.danger .ico-full,.meter.danger .ico-empty,.meter.hl .ico-full,.meter.hl .ico-empty{animation:none}#q{transition:none}.toast{animation:none}}
+</style>
+
+</head>
+<body>
+<canvas id="gl" tabindex="0" aria-label="Case file card. Drag left or right, or press an arrow key twice, to choose."></canvas>
+<div class="vignette"></div>
+<div class="hud">
+  <div class="top">
+    <div class="meters" id="meters"></div>
+    <div class="bar">
+      <button class="btn" id="caseChip" type="button" aria-label="Open the case board"></button>
+      <button class="btn" id="helpBtn" type="button" aria-label="Field guide">?</button>
+    </div>
+  </div>
+  <div class="script">
+    <div class="speaker" id="speaker">&nbsp;</div>
+    <p id="q" aria-live="polite"></p>
+  </div>
+  <div id="slot"></div>
+  <footer>
+    <span id="when">Year 1</span>
+    <span class="hint">Drag the file &middot; or press &larr; &rarr; twice</span>
+    <span id="service">Service 0y</span>
+  </footer>
+</div>
+<div id="toasts" aria-live="polite"></div>
+
+<div class="modal" id="guide" hidden role="dialog" aria-modal="true" aria-labelledby="gT">
+  <div class="sheet">
+    <button class="x" type="button" data-close aria-label="Close">&times;</button>
+    <div class="eyebrow">Field guide &middot; Major Crime Team 99</div>
+    <h2 id="gT">How the job works</h2>
+    <p>Each file on the desk is someone who needs a decision. Drag it left or right to answer. On a keyboard, press an arrow once to preview and again to commit.</p>
+    <p>Every answer moves your four standings. A dot above a meter shows it will change; a big dot means a big change. <b>The job is balance.</b> If any meter empties <b>or</b> fills all the way up, your career ends and you start over as a Constable. A flashing icon means a meter is close to either edge. A few answers are so bad they end your career on the spot. You'll know them when you see them. Probably.</p>
+    <div class="legend" id="legend"></div>
+    <h3>The long game</h3>
+    <p>Answers that read like real police work earn <b>evidence</b> on the open file. Enough evidence brings a warrant, then an arrest, then court. A conviction sends the villain to Kent Institution and opens the next file.</p>
+    <p>Evidence, medals, gear and the people you meet carry over between careers. Rank and service do not. Promotions bring new responsibilities and new kinds of files, which is a polite way of saying more problems. The higher you rise, the bigger every swing gets in both directions, and the job nudges your standings around a little every shift.</p>
+    <h3>Start over</h3>
+    <p>Wipes your whole career: evidence, convictions, medals, gear, endings and everyone you've met. The squad will pretend they've never seen you. Primm won't have to pretend.</p>
+    <button class="btn-danger" type="button" id="resetBtn">Reset all progress</button>
+    <div id="resetConfirm" hidden>
+      <p><b>Really?</b> This can't be undone. Not even by Teddy.</p>
+      <div class="confirm-row"><button class="btn-danger solid" type="button" id="resetYes">Yes, erase everything</button><button class="ghost" type="button" id="resetNo">Keep my career</button></div>
+    </div>
+    <button class="primary" type="button" data-close>Back to the desk</button>
+  </div>
+</div>
+
+<div class="modal" id="board" hidden role="dialog" aria-modal="true" aria-labelledby="bT">
+  <div class="sheet">
+    <button class="x" type="button" data-close aria-label="Close">&times;</button>
+    <div class="eyebrow">Buffalo Detachment &middot; your career</div>
+    <h2 id="bT">Case board</h2>
+    <div id="boardBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="summary" hidden role="dialog" aria-modal="true" aria-labelledby="sT">
+  <div class="sheet">
+    <div class="eyebrow" id="sEye">Posting report</div>
+    <h2 id="sT">Posting over</h2>
+    <div id="sumBody"></div>
+    <button class="primary" type="button" data-close>Report for duty</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+/* ================= CAST ================= */
+const UNIFORM='#5b6b7d';
+const CAST={
+  primm:{name:'Supt. Augusta Primm',short:'SUPERINTENDENT PRIMM',role:'Officer in Charge',p:{skin:'#c58a62',hc:'#26262c',hair:'bob',glasses:true,shirt:'#b3202a',serge:true,hat:'stetson',brow:'flat',mouth:'flat',w:1}},
+  okonkwo:{name:'S/Sgt. Barnaby Okonkwo',short:'S/SGT. OKONKWO',role:'Operations NCO',p:{skin:'#5a3824',hc:'#151010',hair:'bald',goatee:true,shirt:UNIFORM,tie:'#1c2340',brow:'raised',mouth:'smile',w:1.25}},
+  nora:{name:'Cpl. Nora Vasquez-Lind',short:'NORA',role:'Major Crime, Team 99',p:{skin:'#e0b08a',hc:'#6b3b22',hair:'curly',shirt:'#b5654a',brow:'worried',mouth:'smile',w:1,earrings:true}},
+  teddy:{name:'Cst. Teddy Kwan',short:'TEDDY',role:'Major Crime, Team 99',p:{skin:'#e8c29c',hc:'#151515',hair:'short',shirt:'#d6cfbd',tie:'#3d6b8c',brow:'flat',mouth:'flat',w:1}},
+  gilda:{name:'Gilda Ferrante',short:'GILDA',role:'Front Counter, Public Service',p:{skin:'#d9a37c',hc:'#c2463a',hair:'curly',shirt:'#7d4d8e',brow:'raised',mouth:'smirk',w:1,earrings:true}},
+  md:{name:'Csts. Moe & Dooley',short:'MOE & DOOLEY',role:'Night Watch (allegedly)',duo:[
+      {skin:'#f0c6a8',hc:'#bdb7ad',hair:'fringe',mustache:true,shirt:UNIFORM,brow:'flat',mouth:'open',w:1},
+      {skin:'#b37a54',hc:'#d4cfc6',hair:'slick',shirt:UNIFORM,brow:'raised',mouth:'smile',w:1.1}]},
+  voss:{name:'A/Comm. Harlan Voss',short:'ASST. COMMISSIONER VOSS',role:'"E" Division HQ, Surrey',p:{skin:'#efd2b6',hc:'#9a8f80',hair:'slick',glasses:true,shirt:'#1d1d22',tie:'#c9a227',brow:'angry',mouth:'smirk',w:1}},
+  fenn:{name:'Ines Fenn',short:'CORONER FENN',role:'BC Coroners Service',p:{skin:'#8d5a3b',hc:'#ece6d8',hair:'bun',glasses:true,coat:'lab',shirt:'#5d7a8a',brow:'raised',mouth:'open',w:1}},
+  halvorsen:{name:'Sgt. Wren Halvorsen',short:'SGT. HALVORSEN',role:'Police Dog Service (and Biscuit)',p:{skin:'#f1cfb0',hc:'#e2c27a',hair:'bun',shirt:UNIFORM,brow:'flat',mouth:'smile',w:1,dog:true}},
+  jacko:{name:'Cst. Jacques Tremblay',short:'JACKO',role:'Marine Unit, Steveston',p:{skin:'#e3b48e',hc:'#3a2a1c',hair:'short',mustache:true,shirt:'#2c3a52',hat:'cap',hatc:'#2c3a52',brow:'worried',mouth:'smile',w:1.05}},
+  magpie:{name:'The Magpie',short:'EXHIBIT #4471',role:'Wanted: gallery thefts',bird:true},
+  sauce:{name:'Desmond Pike',short:'DESMOND "THE SAUCE BOSS" PIKE',role:'Wanted: counterfeit chili oil',p:{skin:'#f0c9a6',hc:'#3b2416',hair:'short',mustache:true,shirt:'#e9e4da',apron:true,hat:'chef',brow:'angry',mouth:'smirk',w:1.1}},
+  sticky:{name:'Gord "Sticky" Lachance',short:'GORD "STICKY" LACHANCE',role:'Wanted: maple syrup smuggling',p:{skin:'#e7b997',hc:'#7a4a22',hair:'short',beard:true,shirt:'#a3302a',plaid:true,hat:'toque',hatc:'#2f5d3a',brow:'raised',mouth:'smile',w:1.2}},
+  mattie:{name:'Cst. Mattie Boucher',short:'CST. BOUCHER',role:'Fresh from Depot',p:{skin:'#f2d0b5',hc:'#c98a3a',hair:'bun',shirt:UNIFORM,tie:'#1c2340',brow:'raised',mouth:'open',w:.95}},
+  lou:{name:'Lou Szabo',short:'LOU SZABO',role:'Union Representative',p:{skin:'#e2b694',hc:'#6a6a6a',hair:'fringe',glasses:true,mustache:true,shirt:'#4a5a3a',brow:'flat',mouth:'flat',w:1.15}},
+  whitlock:{name:'Coun. Dana Whitlock',short:'COUNCILLOR WHITLOCK',role:'Richmond City Council',p:{skin:'#a8714d',hc:'#2a1d16',hair:'bob',shirt:'#2f6f73',earrings:true,brow:'raised',mouth:'smile',w:1}},
+  rourke:{name:'Comm. Elspeth Rourke',short:'COMMISSIONER ROURKE',role:'Commissioner, Ottawa',p:{skin:'#f0d6c0',hc:'#d9d3c7',hair:'bob',shirt:'#b3202a',serge:true,hat:'stetson',brow:'flat',mouth:'smirk',w:1}},
+  ghost:{name:'"The Ghost"',short:'"THE GHOST"',role:'Wanted: identity fraud at YVR',p:{skin:'#dcc0a3',hc:'#111',hair:'slick',sun:true,mustache:true,shirt:'#2a2a30',tie:'#6b6b75',brow:'flat',mouth:'smirk',w:1}}
+};
+
+const BIO={
+  primm:'Officer in Charge. Last smiled in 2009. Grows orchids competitively.',
+  okonkwo:'Operations NCO. Terrifying. Bakes. Still grieving Gerald the sourdough starter.',
+  nora:'The nicest bad cop in BC. Intimidating only while holding a ukulele.',
+  teddy:'Deadpan. Memorizing every licence plate in the Lower Mainland, for fun.',
+  gilda:'Runs the front counter and at least three side hustles. Laminates everything.',
+  md:'Night watch. One case solved since 1994. Undercover snack specialists.',
+  voss:'HQ in Surrey. Loves audits. Has a recurring calendar entry about Richmond.',
+  fenn:'BC Coroners Service. Far too cheerful about it.',
+  halvorsen:'Police Dog Service. Biscuit is the senior partner and everyone knows it.',
+  jacko:'Marine Unit. Washed out of the Musical Ride. The boat respects him.',
+  mattie:'Graduated Depot in Regina last week. Salutes inanimate objects.',
+  lou:'Union rep. Has read the collective agreement more times than the Bible.',
+  whitlock:'City councillor. Wants a statue of a goose. A big goose.',
+  rourke:'Commissioner of the RCMP. Visits rarely. Remembers everything.',
+  magpie:'Gallery thief. Crochets birds. Mostly lonely.',
+  sauce:'Counterfeit chili oil kingpin. Insists it is a state of mind.',
+  sticky:'Syrup smuggler. Claims a moose was involved.',
+  ghost:'Forty-one passports. Two moustaches.'
+};
+/* ================= CAREER DEFINITIONS ================= */
+const CASES=[
+  {id:'magpie',name:'The Magpie',crime:'Steals art from Steveston galleries and leaves crocheted birds behind. Crafty. Criminal. Lonely.',need:3},
+  {id:'sauce',name:'The Sauce Boss',crime:'Floods the Night Market with counterfeit chili oil. Mostly ketchup. Entirely evil.',need:3},
+  {id:'sticky',name:'Sticky Lachance',crime:'Forty barrels of stolen maple syrup sliding through Steveston harbour. Slowly. It is syrup.',need:3},
+  {id:'ghost',name:'The Ghost',crime:'One face, forty-one passports, and frequent-flyer status that should not legally exist.',need:3},
+  {id:'voss',name:'Harlan Voss',crime:'Someone at "E" Division HQ runs a hockey betting ring. He has a corner office and a calendar.',need:3}
+];
+const jailed=id=>career.cases[id]&&career.cases[id].st==='jailed';
+const jailedCount=()=>CASES.filter(c=>jailed(c.id)).length;
+const svc=()=>state?state.shift*3:0;
+const MEDALS=[
+  {id:'depot',metal:'bronze',name:'Depot Graduate',desc:'Survive orientation with the Superintendent. Most people do. Physically.',rib:['#1c2340','#d9b44a','#1c2340'],test:()=>career.tutorial},
+  {id:'collar',metal:'silver',name:'First Collar',desc:'Make your first arrest. The handcuffs are finally earning their keep.',rib:['#5b6b7d','#f1e8d4','#5b6b7d'],test:()=>career.arrests>=1},
+  {id:'commend',metal:'gold',name:"Commissioner's Commendation",desc:'Put a villain in Kent Institution. The Commissioner sends a letter. It is typed. Mostly.',rib:['#c8302c','#1c2340','#c8302c'],test:()=>jailedCount()>=1},
+  {id:'bravery',metal:'silver',name:'Commendation for Bravery',desc:'Make an arrest while a meter is in the red. Brave, or badly managed. Both count.',rib:['#b3202a','#f1e8d4','#b3202a','#f1e8d4','#b3202a'],test:()=>career.flags.brave},
+  {id:'ride',metal:'bronze',name:'Musical Ride',desc:'Ride in the show. Jacko knows a horse. The horse has opinions.',rib:['#1c2340','#c8302c','#d9b44a','#c8302c','#1c2340'],test:()=>career.flags.ride},
+  {id:'pesm',metal:'silver',name:'Police Exemplary Service Medal',desc:'Reach 20 years in a single career. Exemplary. Allegedly.',rib:['#1c2340','#c8302c','#1c2340','#c8302c','#1c2340'],test:()=>svc()>=240},
+  {id:'lsm',metal:'gold',name:'Long Service Medal',desc:'Reach 25 years in a single career. Your chair now has a dent shaped like you.',rib:['#c8302c','#d9b44a','#c8302c'],test:()=>svc()>=300},
+  {id:'exits',metal:'bronze',name:'Seen Every Exit',desc:'End a career every possible way. Commitment to failure is still commitment.',rib:['#3b5c3e','#f2a33a','#3b5c3e'],test:()=>Object.keys(ENDS).every(k=>career.endings[k])},
+  {id:'om',metal:'om',name:'Order of Merit of the Police Forces',desc:'Jail all five villains, including the one with a corner office at HQ.',rib:['#1c2340','#d9b44a','#1c2340','#d9b44a','#1c2340'],test:()=>jailedCount()===CASES.length}
+];
+const RANKS=[
+  {id:'cst',name:'Constable',abbr:'Cst.',role:'You take the calls. All of them. Even the one about the goose.',req:'Everyone starts here. Even the Commissioner. Allegedly.',test:()=>true},
+  {id:'cpl',name:'Corporal',abbr:'Cpl.',role:'You supervise constables, review their reports and stop the rookie saluting the vending machine.',req:'3 years in this career and one arrest that sticks.',test:()=>svc()>=36&&career.arrests>=1},
+  {id:'sgt',name:'Sergeant',abbr:'Sgt.',role:'You run a watch: rosters, overtime, incident command. Mostly overtime.',req:'8 years in this career and one villain behind bars.',test:()=>svc()>=96&&jailedCount()>=1},
+  {id:'ssgt',name:'Staff Sergeant',abbr:'S/Sgt.',role:"You run the detachment's operations, the union talks and city council's goose ambitions.",req:'14 years in this career and two villains in Kent.',test:()=>svc()>=168&&jailedCount()>=2},
+  {id:'insp',name:'Inspector',abbr:'Insp.',role:'Commissioned officer. You pick the big investigations and take the blame at press conferences.',req:'20 years in this career and four villains in Kent.',test:()=>svc()>=240&&jailedCount()>=4}
+];
+const ITEMS=[
+  {id:'stetson',name:'Your Badge',fx:'Swagger swings shrink by 1. A badge keeps you level-headed. Mostly.',how:'Finish orientation. The badge comes with the speech.',test:()=>career.tutorial},
+  {id:'bird',name:'Crocheted Bird',fx:'Once per career, it takes the hit when a meter empties or maxes out, and resets it to 50. Crochet is tougher than it looks.',how:'Jail The Magpie. He knits it for you from his cell.',test:()=>jailed('magpie')},
+  {id:'thermos',name:'Thermos of Double-Double',fx:'Squad swings shrink by 2, up or down. Nobody overreacts near a double-double.',how:'Jail The Sauce Boss.',test:()=>jailed('sauce')},
+  {id:'stave',name:'Maple Barrel Stave',fx:'Every new piece of evidence nudges Cases 3 points back toward the middle. Smells faintly of pancakes.',how:'Jail Sticky Lachance.',test:()=>jailed('sticky')},
+  {id:'passport',name:"The Ghost's 41st Passport",fx:"Swagger never moves more than 8 at once. You've been forty-one people. You'll be fine.",how:'Jail The Ghost.',test:()=>jailed('ghost')},
+  {id:'ball',name:"Biscuit's Tennis Ball",fx:'Cases swings shrink by 2. Biscuit keeps everyone calm.',how:'Earn the Commendation for Bravery.',test:()=>career.medals.bravery},
+  {id:'serge',name:'Red Serge',fx:'Brass swings shrink by 2. HQ trusts the costume.',how:'Earn the Police Exemplary Service Medal.',test:()=>career.medals.pesm}
+];
+const has=id=>!!career.items[id];
+
+/* ================= CARDS =================
+   fx keys: c Cases, s Squad, b Brass, w Swagger
+   o: deck, cs (case id), stage lead|arrest|trial, after (case jailed), special, once, stamp, hl, req/not (run flags), cnot (career flag)
+   Lo/Ro: set, unset, next, delay, ev (+1/-1), arrest, mistrial, jail, cflag, tut */
+const CARDS=[];
+function C(id,who,t,L,Lfx,R,Rfx,o={}){CARDS.push(Object.assign({id,who,t,L:[L,Lfx,o.Lo||{}],R:[R,Rfx,o.Ro||{}]},o))}
+
+/* --- orientation --- */
+C('t1','primm',`Constable. Welcome to Buffalo Detachment, Major Crime Team 99. Drag this file left or right to answer me. Every answer costs something.`,
+  'Understood, Superintendent',{},'Sounds fun',{},{special:true,stamp:'ORIENTATION'});
+C('t2','primm',`The magnifying glass is CASES: the files you close. Let it drain and you're reassigned to the middle of nowhere. Let it fill up and HQ decides your numbers are too good to be true. Keep it in the middle.`,
+  'Keep it in the middle',{},'Noted',{},{special:true,hl:'c',stamp:'ORIENTATION'});
+C('t3','okonkwo',`The mug is SQUAD: how much the team likes you. Too low, mutiny. Too high, nobody works and it's your fault. Balance it. Like a good sourdough.`,
+  'Like a sourdough',{},'I can be liked',{},{special:true,hl:'s',stamp:'ORIENTATION'});
+C('t4','voss',`The shield is BRASS: what "E" Division HQ thinks of you. That's me. Zero gets you exhibit storage. A hundred gets you kicked upstairs to a desk in Ottawa. Forever.`,
+  'Yes, sir',{},'Hello, sir',{},{special:true,hl:'b',stamp:'ORIENTATION'});
+C('t5','nora',`The sunglasses are SWAGGER. Your cool. Lose it all and you're the fanny-pack guy. Max it out and you'll do something unforgivable on the six o'clock news.`,
+  'Never the fanny pack',{},'Define unforgivable',{},{special:true,hl:'w',stamp:'ORIENTATION'});
+C('t6','teddy',`The long game is the case board, up top. Answers that sound like real police work earn evidence. Enough evidence, we arrest. Then court. Then jail.`,
+  'Evidence, arrest, court',{},'Then jail',{},{special:true,stamp:'ORIENTATION'});
+C('t7','primm',`Here is the trick. An empty meter ends your career. So does a full one. Stay in the middle. If you fall, you start over as a Constable, but your evidence, medals and contacts stay. Dismissed.`,
+  'Report for duty',{},'Report for duty',{},{special:true,stamp:'ORIENTATION',Lo:{tut:true},Ro:{tut:true}});
+C('intro','primm',`Welcome back, Constable. Yes, Constable. Again. The squad made "several choices" while you were away. Restore order. Or its appearance.`,
+  'Coffee first',{s:4},"Let's roll",{c:4},{special:true,stamp:'REINSTATED'});
+
+/* --- detachment (base deck) --- */
+C('budget','primm',`"E" Division has asked me to trim three percent of joy from our budget. I have chosen to interpret that literally. Which joy goes?`,
+  'The espresso machine',{s:-12,b:8},'Your orchid fund',{b:-12,s:6,w:4});
+C('trustfall','okonkwo',`I have scheduled a mandatory trust fall. I will be catching everyone. Simultaneously. I have been training.`,
+  'Fake a callout',{s:-6,w:6,c:4},'Fall first',{s:10,w:-6});
+C('hug','nora',`The suspect started crying, so I hugged him. Then he confessed. Then I cried. Is that... procedure?`,
+  'It is now',{c:10,b:-6},'File it as "enhanced interview"',{b:6,w:4,s:-4});
+C('trace','teddy',`I traced the burner phone. I also traced the guy's mom, his landlord, and his Grade 7 bully. Do you want those?`,
+  'Just the phone',{c:8},'Especially the bully',{w:8,b:-8,c:3});
+C('crypto','gilda',`I double-booked Interview Room One with my nephew's crypto seminar. He has a whiteboard. Very motivating energy.`,
+  'Clear the room',{c:6,s:-4},'Interview in the seminar',{w:10,c:-6,b:-6});
+C('van','md',`We found the stolen van. Well. We found a van. In the Lansdowne parking lot. We've been eating lunch in it for three weeks.`,
+  'Run the plates',{c:10,s:2},"Don't ask questions",{s:6,c:-8});
+C('audit','voss',`I've driven up from Surrey to shadow you for a performance audit. Pretend I'm not here. I'll be taking notes on your posture.`,
+  'Stand up straight',{b:10,w:-10},'Slouch with purpose',{w:10,b:-12});
+C('eyebrows','fenn',`Great news, it's definitely not natural causes! Weirder news: someone took the deceased's eyebrows. After. Classic.`,
+  'Eyebrow trafficking ring',{c:8,w:4},'Never say "classic" again',{s:-4,b:4});
+C('gerald','okonkwo',`My sourdough starter, Gerald, has died. I need the day. Possibly the week. I need you to deliver the eulogy.`,
+  'Write the eulogy',{s:10,c:-6},'Bread is not a person',{s:-12,w:6});
+C('banter','primm',`A morning radio show wants me for a segment. The producer asked for "banter." Explain banter to me as you would to a granite statue.`,
+  "It's jokes, but hostile",{b:6,w:6},'Send me instead',{w:12,b:-6,c:-4});
+C('uke','nora',`I learned to be scary. Watch. *She plays one menacing ukulele chord. The suspect in Room 2 asks for a lawyer.*`,
+  'Lawyers count as progress',{c:4,s:4},'Teach her a minor key',{c:8,w:4,b:-4});
+C('hostage','teddy',`Is it a problem that I accidentally became the negotiator for the building across No. 3 Road? They seem to trust me.`,
+  'Go negotiate',{c:10,s:-4,b:4},'Bill them hourly',{w:6,b:-10,s:4});
+C('nanaimo','gilda',`Someone keeps stealing Nanaimo bars from the lunchroom fridge. I'm not saying it's me. I'm saying they're very good Nanaimo bars.`,
+  'Open a full investigation',{s:8,c:-8,w:4},'Lock the fridge',{s:-6,b:4});
+C('staplers','voss',`Your detachment has the highest stapler-loss rate in the Lower Mainland. I want a task force on my desk by Monday.`,
+  'Assign Moe & Dooley',{b:6,s:4,c:-4},"I'll lead it personally",{b:12,w:-10});
+C('undercover','md',`Dooley and I want to go undercover. As high schoolers. We already bought the backpacks.`,
+  'Absolutely not',{s:-6,b:4},'Absolutely yes',{w:8,s:8,c:-6,b:-6});
+C('bet','primm',`I bet you cannot close the Garden City file by Friday. If I win, you wear the full Red Serge to the office. All day. Including the boots.`,
+  "You're on",{w:10},"I don't gamble, ma'am",{w:-8,b:6},{once:true,Lo:{set:'bet',next:'betFri',delay:3}});
+C('betFri','primm',`It is Friday, 4:58 p.m. The Garden City suspect is in Room 1 and refuses to talk. I have your Red Serge on a hanger. I had it pressed.`,
+  'Bluff a fake DNA match',{c:12,b:-8,w:6},'Suit up in the Serge',{w:-14,b:10},{special:true,stamp:'DEADLINE',Lo:{unset:'bet'},Ro:{unset:'bet'}});
+C('window','okonkwo',`The squad is fighting over the window desk. I am moments from settling it with a bracket tournament. Stop me. Or help me.`,
+  'Help with the bracket',{s:10,c:-6},'Seniority. Done.',{s:-8,b:8});
+C('car','nora',`Can I borrow your cruiser? Mine has "too many feelings in it" since the breakup.`,
+  'Hand over the keys',{s:8,w:-4},'Drive her yourself',{s:6,c:-4,w:4});
+C('plates','teddy',`I've been memorizing every licence plate in the Lower Mainland. For fun. I'm about forty percent done.`,
+  'Put him on the hit-and-run',{c:12,s:-2},'Get this man a hobby',{s:6,c:-4});
+C('cupcakes','fenn',`I baked cupcakes for the team! At work! With work equipment! Totally clean. Mostly clean.`,
+  'Eat one, bravely',{s:10,w:4,c:-6},'Bag it as an exhibit',{c:4,s:-6});
+C('eligible','gilda',`A reporter on line two wants to know if you're "Richmond's Most Eligible Mountie." Should I say yes, or yes louder?`,
+  'Yes. Louder.',{w:14,b:-8},'No comment',{b:6,w:-6});
+C('committee','voss',`I'm reassigning your best investigator to my Committee on Committees. Unless you'd like to volunteer yourself.`,
+  'Send Teddy',{s:-10,b:8},"I'll go",{c:-10,s:8});
+C('book','okonkwo',`I need a volunteer to read my children's book. It is about a brave little Stetson. It has made me cry eleven times.`,
+  'Read it to the squad',{s:12,c:-6},'Give honest notes',{s:-6,w:6,b:2});
+C('smile','primm',`I have been told that I "never smile." This is false. I smiled in 2009. It was during a tax audit.`,
+  'Throw her a surprise party',{s:8,b:-6},'Respect the brand',{b:10,w:-4});
+C('goodgood','nora',`Okay, hear me out. Good cop, bad cop, except we're both good cops and we compliment him until he breaks.`,
+  'Compliment sandwich',{c:10,w:-4},"I'm always bad cop",{w:10,s:-6});
+C('cold','md',`We solved a case. We're as surprised as you are. It's the one from 1994. The guy is eighty-eight now.`,
+  'Make the arrest',{c:10,s:4,b:-4},'Let him finish bingo',{s:6,w:4,c:-4});
+C('loonie','gilda',`The vending machine ate my loonie, so I filed a missing persons report on the loon. It was accepted.`,
+  'Close it, Gilda',{b:6,s:-4},'Assign it an investigator',{w:6,s:8,b:-8});
+C('vibecam','voss',`HQ is piloting body cams that also monitor "vibes." Your team volunteered. Well. I volunteered them.`,
+  'Embrace the vibe-cam',{b:10,s:-10},'Lose them in exhibits',{s:8,b:-12,w:4});
+C('bigguy','okonkwo',`A suspect called me "big guy." I am big. I am a guy. But it was the TONE.`,
+  'Let him run the interview',{c:10,s:4,b:-6},'Get him a calming tea',{s:6,c:-4});
+C('symphony','primm',`I need you to escort my mother-in-law to the symphony. She is a retired judge. She has never once acquitted anyone.`,
+  'Wear the good suit',{b:12,w:-6,c:-4},'Fake a callout at intermission',{w:8,b:-10});
+C('mannequin','fenn',`The body in the Fraser? Good news, it's a mannequin! Bad news: it's a mannequin with warrants in three provinces.`,
+  'Interview the mannequin',{w:10,c:-6},'Find who dressed it',{c:10});
+C('files','nora',`I reorganized the case files by emotional intensity. Red means "devastating." Everything is red.`,
+  'Re-sort by date',{c:6,s:-4},'Honestly, this works',{s:6,c:2,b:-4});
+C('chess','teddy',`Our suspect plays at an underground chess club off Westminster Highway. Nobody has ever beaten him. I have never played chess.`,
+  'Learn by Thursday',{c:10,w:4,s:-4},'Send Okonkwo to flip the table',{c:6,b:-8,s:4});
+C('magician','gilda',`I accidentally told the whole detachment you're quitting to become a magician. They bought you a cape.`,
+  'Correct the record',{s:-6,b:4},'Wear the cape',{w:12,s:6,b:-8});
+C('parade','voss',`Good news: the Salmon Festival parade has a new route. Bad news: it goes through your crime scene. Worse news, for you: I designed it.`,
+  'Reroute the parade',{c:8,b:-10},'Process the scene fast',{c:-6,b:8});
+C('paint','primm',`The office is being repainted. I have selected a colour called "Neutral Disappointment." The team wishes to vote.`,
+  'Democracy!',{s:10,b:-6},'The Superintendent has spoken',{b:8,s:-6});
+C('rye','okonkwo',`There is a robbery in progress at the bakery next door. They took the sourdough. Detective. It was Gerald's grandson.`,
+  'Lights and sirens',{c:12,s:4,w:4},'Negotiate for the loaf',{s:10,c:-4});
+C('asleep','md',`Dooley fell asleep in Interview Room Two and the suspect has been confessing to him for an hour.`,
+  'Let it ride',{c:10,b:-4},'Wake him up',{b:4,c:-4});
+C('parents','nora',`My parents are visiting and I told them I'm the Superintendent. Can everyone play along for, like, four hours? Maybe a weekend?`,
+  'Salute her',{s:10,b:-10,w:4},'Tell them the truth',{s:-8,b:6},{once:true,Lo:{next:'parents2',delay:2}});
+C('parents2','primm',`Constable. Why is Corporal Vasquez-Lind's father asking me to fetch him a coffee. Two sugars. "Chop chop."`,
+  'Fetch the coffee, ma\'am',{b:-10,s:10,w:6},'Confess everything',{b:6,s:-8},{special:true});
+C('diary','teddy',`Found the suspect's diary. "Day four: the Mountie with the good hair is onto me." That's you, right?`,
+  'Obviously me',{w:10,c:4},"It's Okonkwo",{s:6,w:-6});
+C('candor','primm',`A rare moment of candour. You are my most frustrating member. Also my best. Do not repeat this.`,
+  'Repeat it immediately',{w:10,b:-8,s:6},'Nod solemnly',{b:10,w:2});
+C('dodgeball','gilda',`I signed us up for charity dodgeball against the Fire Department. First practice is in twenty minutes. I brought headbands.`,
+  'We train to win',{s:8,c:-6,w:4},'Throw the match for PR',{b:8,w:-8});
+C('ridealong','fenn',`Can I ride along today? I want to see a scene before anyone tidies it! Not in a weird way.`,
+  "Shotgun's yours",{s:6,c:6,b:-4},'Definitely in a weird way',{w:4,s:-4});
+C('karaoke','okonkwo',`Team karaoke is tonight. I have prepared a twelve-minute ballad medley. There will be pyrotechnics. Indoors.`,
+  'Duet with him',{s:12,w:6,c:-6},'Call the fire inspector',{b:8,s:-6});
+C('sandwich','teddy',`Weird thing. I disarmed a bomb at lunch. It was in my sandwich. Anyway, anyone want chips?`,
+  'WHO wants you dead?',{c:10,s:-4},'What kind of chips?',{w:8,s:4,c:-4});
+C('quote','voss',`A newspaper wants a quote on morale. I wrote one for you: "Morale is a privilege." Just read it.`,
+  'Read it word for word',{b:10,s:-10},'Ad-lib',{w:8,s:6,b:-10});
+C('parrot','nora',`Our only witness is a parrot. He keeps saying "Tuesday" and "Gary did it." There are nine Garys on the block.`,
+  'Line up the Garys',{c:10,s:-4},'Interview the parrot',{w:10,c:-4});
+C('geese','okonkwo',`Canada geese have taken the detachment parking lot. They are organized. They have a leader. He hissed at me.`,
+  'Negotiate with the leader',{s:6,w:4,c:-4},'Call wildlife officers',{b:6,s:-4});
+C('hockey','teddy',`Our hockey game against Surrey Detachment is tonight. I've never skated. I've watched four hundred hours of footage.`,
+  'Put him in net',{s:8,w:6,c:-6},'Bench him',{s:-6,b:4});
+C('gravy','gilda',`Someone used your Red Serge as a tablecloth at the potluck. There's gravy. A lot of gravy. It's honestly great gravy.`,
+  'Find the culprit',{c:6,s:-6,w:4},'Ask for the recipe',{s:8,w:-6});
+C('statue','primm',`The Magpie has crocheted a full-size replica of me from his cell at Kent. It arrived by courier. It is... flattering. Do we keep it?`,
+  'Display it in the lobby',{s:10,w:6,b:-4},'Exhibit storage',{b:8,c:4},{after:'magpie',once:true});
+
+/* --- Police Dog Service --- */
+C('dog1','halvorsen',`Biscuit has found drugs, a missing child and your car keys. Today. He would like a promotion.`,
+  'Promote the dog',{s:10,b:-8,w:4},'Give him a treat',{s:4,c:2},{deck:'dog'});
+C('dog2','halvorsen',`A suspect is hiding in a blueberry field in East Richmond. Biscuit can find him. Biscuit will also eat every blueberry.`,
+  'Release the Biscuit',{c:12,b:-4},'Search on foot',{c:4,s:-6},{deck:'dog'});
+C('dog3','halvorsen',`Biscuit bit Assistant Commissioner Voss. Gently. Diplomatically. Do we discipline him?`,
+  'Write him up',{b:8,s:-8},'Commendation for Biscuit',{s:10,w:6,b:-10},{deck:'dog',cnot:'voss_gone'});
+C('dog4','halvorsen',`Biscuit refuses to retire. He hid his own retirement papers. We found them in the yard. Chewed. Notarized, somehow.`,
+  'Respect his wishes',{s:8,c:4,b:-4},'Plan him a party',{s:6,w:4,c:-4},{deck:'dog'});
+C('dog5','halvorsen',`Biscuit has picked a favourite member of the detachment. It's not you. It's the vending machine.`,
+  'Challenge the machine',{w:8,s:4,c:-4},'Accept your place',{w:-6,s:6},{deck:'dog'});
+
+/* --- Marine Unit --- */
+C('mar1','jacko',`I washed out of the Musical Ride because my horse and I had creative differences. Now I drive a boat. The boat respects me.`,
+  'Respect the boat',{s:6,c:2},'Tell me about the horse',{s:8,c:-4,w:2},{deck:'marine'});
+C('mar2','jacko',`Sea lions have boarded the patrol boat at Steveston. They will not leave. One of them has my hat.`,
+  'Bribe them with fish',{s:8,c:-4},'Reclaim the vessel',{w:8,b:4,s:-4},{deck:'marine'});
+C('mar3','jacko',`A boat on the Fraser is towing a water-skier. In December. He says it's for charity. He's turning blue for charity.`,
+  'Pull him out',{c:8,s:4},'Make a donation',{w:6,b:-6},{deck:'marine'});
+C('ride','jacko',`The Musical Ride is in town and Gâteau, my old horse, remembers me. They need a rider tonight. Want to ride him in the show?`,
+  'Saddle up',{w:12,b:6,c:-8},'Hard pass',{s:-4},{deck:'marine',cnot:'ride',Lo:{cflag:'ride'}});
+
+/* --- Night Market --- */
+C('mkt1','md',`We went undercover at the Night Market. We've eaten forty skewers. Undercover is going great.`,
+  'Expense it',{s:8,b:-8},'Extract them',{c:4,s:-4},{deck:'market'});
+C('mkt2','nora',`A vendor says his bubble tea was stolen. He wants it dusted for prints. It's mostly ice now.`,
+  'Dust it',{c:6,w:-4,s:4},'Buy him a new one',{s:6,c:-4},{deck:'market'});
+C('mkt3','teddy',`I've mapped every stall at the Night Market by spice level. Our suspect is at a nine. I've only trained up to a four.`,
+  'Train harder',{c:8,s:-4},'Send Okonkwo, he fears nothing',{c:6,s:4,b:-4},{deck:'market'});
+C('mkt4','gilda',`Lost property from the Night Market: one hundred and six phones, eleven toddler shoes, and a live goldfish named Constable.`,
+  'Promote the goldfish',{w:8,s:8,b:-8},'Process it all',{c:6,s:-6},{deck:'market'});
+
+/* --- YVR Airport --- */
+C('yvr1','teddy',`A goose got through security at YVR. Twice. It cleared screening better than I did.`,
+  'Detain the goose',{c:6,w:4,s:-2},'Grant the goose a NEXUS card',{w:10,b:-8},{deck:'yvr'});
+C('yvr2','nora',`A passenger declared forty jars of maple syrup as "personal emotional support." He's crying. I'm crying. Customs is crying.`,
+  'Let him keep three',{s:8,b:-6},'Call Canada Border Services',{b:8,s:-6},{deck:'yvr'});
+C('yvr3','gilda',`YVR lost and found has a full-size canoe. Nobody will claim it. It's been there since 2003. It has a name now.`,
+  'Investigate the canoe',{c:6,w:4,s:-4},'Adopt the canoe',{s:10,c:-6},{deck:'yvr'});
+C('yvr4','okonkwo',`A pilot wants a Mountie escort because his co-pilot "gives him the creeps." The co-pilot is his brother.`,
+  'Mediate the brothers',{s:8,c:-4},'Escort, firmly',{b:8,w:4,s:-4},{deck:'yvr'});
+
+/* --- too much of a good thing (meter hits 100) --- */
+C('over_c','gilda',`Your clearance rate is so perfect HQ suspects fraud. The auditors are here. They brought their own chairs.`,
+  'Open every file to them',{c:-25,b:6},'Hide in exhibit storage',{c:-20,w:-6},{special:true,stamp:'AUDIT'});
+C('over_s','okonkwo',`The squad likes you so much they threw you a party. During a shift. Nobody is answering calls. I made a cake.`,
+  'Shut it down',{s:-25,b:6},'One song, then back to work',{s:-15,c:-8},{special:true,stamp:'PARTY FOUL'});
+C('over_b','primm',`HQ adores you. They want you on a six-month committee in Ottawa, writing a report about reports.`,
+  'Decline politely',{b:-25,w:4},'Send Teddy instead',{b:-15,s:-8},{special:true,stamp:'SUMMONED'});
+C('over_w','nora',`You have a fan account. Someone printed your face on a toque. You are signing autographs at a crime scene.`,
+  'Stop signing',{w:-25,c:4},'Just one more',{w:-15,b:-8},{special:true,stamp:'TOO COOL'});
+
+/* --- critical errors in judgement (end a career on the spot) --- */
+C('crit_bribe','nora',`A defence lawyer is offering hockey tickets if a bag of exhibits "goes missing." Nosebleed seats, but still. Hockey.`,
+  'Lose the exhibits',{},'Report the offer',{b:8,c:4},{Lo:{fatal:'bribe'}});
+C('crit_pursuit','teddy',`The lawn gnome thief is fleeing down No. 3 Road toward a school zone. At pickup time. Pursue?`,
+  'Call it off, track the plate',{c:6,b:4},'Floor it',{},{Ro:{fatal:'pursuit'}});
+C('crit_leak','gilda',`A true-crime podcaster wants your "off the record" thoughts on an active file. He is recording. He is not hiding the microphone.`,
+  'Tell him everything',{},'No comment',{b:6,w:-4},{Lo:{fatal:'leak'}});
+C('crit_falsify','voss',`Sign this form saying you attended the ethics workshop. You didn't. Neither did I. Everyone does it.`,
+  'Refuse',{b:-8,s:6},'Sign it',{},{cnot:'voss_gone',Ro:{fatal:'falsify'}});
+C('crit_scene','fenn',`The scene photos would look so much nicer if we tidied up a little. Move the body two feet left? Straighten the rug?`,
+  'Tidy up',{},'Touch nothing',{c:6,s:-2},{Lo:{fatal:'scene'}});
+
+/* --- promotions --- */
+C('promo_cpl','primm',`Constable, you are promoted to Corporal. Congratulations. You will now supervise people. I apologize to them in advance.`,
+  "Thank you, ma'am",{b:6},'Do I get a new chair?',{w:6},{special:true,stamp:'PROMOTED'});
+C('promo_sgt','primm',`Sergeant. You now run a watch. Rosters, overtime, incident command. The overtime is the dangerous part.`,
+  "I'll guard it with my life",{b:6},"I'll spend it wisely",{s:6},{special:true,stamp:'PROMOTED'});
+C('promo_ssgt','okonkwo',`Staff Sergeant! We are now equals. I have baked a celebratory loaf. It is shaped like your face.`,
+  'Eat the face',{s:8},'Frame the face',{w:6},{special:true,stamp:'PROMOTED'});
+C('promo_insp','rourke',`Inspector. Congratulations on your commission. You'll find the paperwork is the same, but now it's your fault.`,
+  'Accept the commission',{b:8},'Ask about parking',{w:6},{special:true,stamp:'COMMISSIONED'});
+
+/* --- Corporal: supervising constables --- */
+C('cpl1','mattie',`Corporal! Constable Boucher reporting! I graduated Depot nine days ago. I have saluted the vending machine twice. Orders?`,
+  'Ride with me today',{s:8,c:-4},'Start with the filing',{c:6,s:-6},{rank:1});
+C('cpl2','mattie',`I wrote my first report! It's forty pages. Chapter three is from the suspect's point of view.`,
+  'Coach a rewrite',{c:8,s:-2},"Approve it, it's art",{w:6,b:-8,s:4},{rank:1});
+C('cpl3','teddy',`As my supervisor, can you approve a training course? It's called "Advanced Surveillance." It's actually birdwatching.`,
+  "Approve it, it's relevant",{s:8,b:-4},'Deny',{b:4,s:-6},{rank:1});
+C('cpl4','okonkwo',`You now review use-of-force reports. Today's: Constable Moe "used force" on a jammed photocopier. The photocopier lost.`,
+  'Clear him',{s:6,c:2},'Order photocopier sensitivity training',{w:6,b:4,s:-4},{rank:1});
+C('cpl5','mattie',`Corporal, a man says his neighbour's hedge is "a hate crime against sunlight." Is that a file?`,
+  'Go mediate the hedge',{s:6,c:4},'Teach her to triage calls',{c:6,b:4},{rank:1});
+
+/* --- Sergeant: running a watch --- */
+C('sgt1','okonkwo',`You're watch commander tonight. The overtime budget is nearly gone. The Night Market wants extra patrols. So does the hockey game.`,
+  'Night Market',{c:8,b:-6},'Hockey game',{s:8,c:-6},{rank:2});
+C('sgt2','nora',`Sergeant, you have command: a man is barricaded in a dumpling shop with a hostage. The hostage is a dumpling. A very big dumpling.`,
+  'Call in a negotiator',{c:8,b:4},'Negotiate yourself',{w:10,c:4,b:-6},{rank:2});
+C('sgt3','lou',`Members on your watch say the new roster is "an act of war." Specifically Dooley. Specifically about naps.`,
+  'Revise the roster',{s:10,b:-6},'Stand firm',{b:8,s:-8},{rank:2});
+C('sgt4','primm',`Performance reviews are due. Please rate Corporal Vasquez-Lind. She has submitted a self-assessment. It is a song.`,
+  'Exceeds expectations',{s:8,b:-4},'Meets expectations',{b:6,s:-6},{rank:2});
+C('sgt5','gilda',`A TV crew outside wants "the person in charge." That's you, tonight. Your hair is doing a thing.`,
+  'Do the interview',{w:8,b:4,c:-2},'Refer them to media relations',{b:6,w:-6},{rank:2});
+
+/* --- Staff Sergeant: detachment operations --- */
+C('ssg1','whitlock',`City council wants to cut the detachment budget and spend it on a statue of a goose. A big goose. Convince me otherwise.`,
+  'Present the crime stats',{b:8,c:4,w:-4},'Propose a smaller goose',{s:6,w:6,b:-4},{rank:3});
+C('ssg2','okonkwo',`Salmon Festival deployment plan. We have forty members and a hundred thousand people. Also one salmon costume nobody will claim.`,
+  'Maximum patrols',{c:8,s:-8},'Rotate shifts fairly',{s:8,c:-4},{rank:3});
+C('ssg3','lou',`Bargaining season. The members want better boots, more training, and "a nap pod." Pick what you'll fight for.`,
+  'Boots and training',{s:6,b:4},'The nap pod',{s:12,b:-10},{rank:3});
+C('ssg4','primm',`I am at a conference in Ottawa. You are acting Officer in Charge. Please try not to rename anything.`,
+  'Run it by the book',{b:10,w:-6},'Rename the lunchroom',{w:10,s:6,b:-8},{rank:3});
+C('ssg5','teddy',`Staff, can we upgrade the exhibit lab? Our current microscope is a magnifying glass taped to a flashlight.`,
+  'Fight for the budget',{c:10,b:-8},'Upgrade the tape',{s:4,c:2,w:-4},{rank:3});
+
+/* --- Inspector: commissioned officer --- */
+C('ins1','rourke',`Inspector, I'm visiting Richmond next week. I'd like to see "real policing." Please do not show me Moe and Dooley.`,
+  'Stage a perfect day',{b:12,s:-6},'Show her the real thing',{s:8,w:6,b:-6},{rank:4});
+C('ins2','primm',`Two major investigations, one budget: the fentanyl supply line, or the casino money laundering. Choose. I'll back you either way.`,
+  'The supply line',{c:12,b:-4},'The casino money',{c:8,b:6,s:-4},{rank:4});
+C('ins3','teddy',`Our wiretap application is ready for the judge. It's nine hundred pages. I'd like you to read it. I'd also like you to love it.`,
+  'Read every page',{c:10,s:-4,w:-4},'Read the summary',{b:4,c:4},{rank:4});
+C('ins4','gilda',`Press conference in five minutes. Twelve cameras. I spilled a double-double on your notes. They're a map now.`,
+  'Wing it',{w:10,b:-6},'Read from the map',{c:4,b:4,w:-6},{rank:4});
+C('ins5','rourke',`Ottawa is reviewing the future of contract policing. I want your view on Richmond. In writing. By tomorrow.`,
+  'Write a careful memo',{b:10,s:-4},'Invite her to see for herself',{s:8,w:4,b:-6},{rank:4});
+
+/* --- CASE FILES --- */
+// 1. The Magpie
+C('mag1','magpie',`A crocheted bird was left at the Steveston gallery break-in. Pinned to it: "Catch me if you can. Seriously, please. It's lonely out here."`,
+  'Swab it for DNA',{c:6},'Crochet one back',{w:8,s:4,c:-4},{cs:'magpie',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('mag2','magpie',`Another bird, left on your desk. It's wearing a tiny Stetson. Your Stetson. Somehow he measured your head.`,
+  'Trace the yarn',{c:8,s:-4},'Admire the stitching',{w:6,c:-6},{cs:'magpie',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('mag3','nora',`Stakeout at the yarn shop, night three. A man in a turtleneck just bought forty skeins of grey. Also I fell asleep on your shoulder.`,
+  'Photograph him',{c:6,b:4},'Ask about his pattern',{s:6,w:4},{cs:'magpie',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('magA','nora',`It's him. Turtleneck, forty skeins, a getaway bicycle with a basket. Warrant's signed. Do we take him?`,
+  'Take him down',{c:12,w:6},'Wait for backup',{s:4,c:-4},{cs:'magpie',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('magT','primm',`Crown counsel reports the Magpie's lawyer has crocheted a sympathetic jury. Literally. Twelve little yarn jurors.`,
+  'Present the yarn receipts',{c:10,b:6},'Let Nora testify, emotionally',{s:8,w:2},{cs:'magpie',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+// 2. The Sauce Boss
+C('sau1','gilda',`A Night Market vendor swears his chili oil was swapped for ketchup and food colouring. He wept. I bought six.`,
+  'Bag a jar for the lab',{c:6},'Taste test it',{s:6,w:4,c:-4},{cs:'sauce',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('sau2','fenn',`The fake sauce has fingerprints from a man with a record. Also paprika. So much paprika. Nobody needs this much paprika.`,
+  'Run the prints',{c:8},'Run the paprika',{w:6,c:-4},{cs:'sauce',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('sau3','md',`We followed a delivery van to a warehouse on River Road. Then we got hungry. Then we came back. Mostly.`,
+  'Get the address',{c:6,s:-4},'Get lunch with them',{s:8,c:-6},{cs:'sauce',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('sauA','okonkwo',`Desmond Pike has barricaded himself in a walk-in fridge with four hundred litres of fake sauce. He says he'll "go out spicy."`,
+  'Breach the fridge',{c:12,s:4},'Wait him out',{b:-6},{cs:'sauce',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('sauT','teddy',`Pike's defence is that "chili oil is a state of mind." The judge seems into it.`,
+  'Call a food scientist',{c:10,b:4},'Let the jury taste it',{s:6,w:6},{cs:'sauce',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+// 3. Sticky Lachance
+C('stk1','okonkwo',`A fishing boat at Steveston is riding very low in the water. It smells like pancakes. I am suspicious and hungry.`,
+  'Board and inspect',{c:8},'Ask for pancakes',{s:6,w:4},{cs:'sticky',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('stk2','primm',`Producers in Quebec report forty barrels of syrup missing. They called me. Personally. Their tone was sticky.`,
+  'Pull the shipping manifests',{c:6,b:6},'Make a syrup pun back',{w:8,b:-6},{cs:'sticky',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('stk3','teddy',`Gas station near the ferry terminal sold nine hundred waffles to one man last week. Paid in cash. Wore a toque in July.`,
+  'Pull the security video',{c:8,s:-2},'Respect the waffle',{w:6,c:-4},{cs:'sticky',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('stkA','teddy',`Sticky Lachance is fleeing up the Fraser in a boat full of barrels. He's slow. Syrup is heavy.`,
+  'Full throttle',{c:12,w:6},'Radio ahead, wait',{b:4},{cs:'sticky',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('stkT','primm',`Lachance claims the barrels were "a gift from a moose." His lawyer has produced a moose.`,
+  'Introduce the manifests',{c:10,b:6},'Cross-examine the moose',{w:10},{cs:'sticky',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+// 4. The Ghost
+C('gho1','teddy',`Same face, eleven names, eleven flights out of YVR this month. Either it's one man, or a family with very strong genes.`,
+  'Pull the CCTV',{c:8},'Respect the genes',{w:6,c:-4},{cs:'ghost',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('gho2','gilda',`A man left a passport at the front counter. Name: "Definitely Not The Ghost." Photo: a bedsheet with eyeholes.`,
+  'Process it for prints',{c:6},'Frame it for the wall',{s:6,w:4},{cs:'ghost',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('gho3','nora',`I went undercover as a flight attendant. I've been promoted twice. Oh, wait. He just ordered the fish.`,
+  'Bag his fork',{c:8,s:-4},'Stay for the promotion',{w:8,c:-4},{cs:'ghost',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('ghoA','teddy',`The Ghost is at gate D52, boarding for Lisbon. He's wearing a fake moustache over a real moustache.`,
+  'Stop the boarding',{c:12,b:6},'Let him board, tail him',{w:6,b:-6},{cs:'ghost',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('ghoT','primm',`The Ghost has filed forty-one separate alibis. One of them is notarized by himself.`,
+  'Lay out all the passports',{c:10},'Ask which alibi he prefers',{w:8},{cs:'ghost',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+// 5. Voss
+C('vos1','teddy',`The Assistant Commissioner's expense claims include "consulting fees" paid to someone listed as "Not A Bookie."`,
+  'Get a production order',{c:8,b:-8},'Pretend you never saw it',{b:6,s:-6},{cs:'voss',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('vos2','okonkwo',`Voss asked me to lose tonight's game against Surrey. He said it would be "good for my career." My career is sourdough.`,
+  'Wear a wire to the game',{c:8,s:4},'Throw the game',{b:8,s:-10},{cs:'voss',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('vos3','gilda',`Voss's assistant accidentally faxed us his whole betting ledger. Who still faxes? Anyway, I laminated it.`,
+  'Log it as an exhibit',{c:8},'Put it on the fridge',{s:6,w:6},{cs:'voss',stage:'lead',stamp:'LEAD',Lo:{ev:1}});
+C('vosA','primm',`Constable. I have waited eleven years to say this. Harlan Voss, you are under arrest. Would you like to do the honours?`,
+  'Cuffs, please',{c:14,s:10},'After you, Superintendent',{b:8,s:6},{cs:'voss',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{arrest:true}});
+C('vosT','primm',`Voss has hired the most expensive lawyer in British Columbia. I have hired Constable Kwan's slide deck.`,
+  'Run the slide deck',{c:12},'Ad-lib a closing',{w:10},{cs:'voss',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+// --- more arrests and court days ---
+C('magA2','halvorsen',`Biscuit has the Magpie cornered in a yarn shop stockroom. Biscuit is also tangled in mohair. Move in?`,
+  'Move in',{c:10,s:4},'Untangle the dog first',{s:6},{cs:'magpie',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('magT2','teddy',`The Magpie's defence: the birds were "gifts," and gifts can't be theft. He has brought the judge a bird.`,
+  'Show the gallery inventory',{c:8,b:6},'Object to the bird',{w:8},{cs:'magpie',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+C('magT3','nora',`On the stand, the Magpie started crying. Then I started crying. Then the jury. Crown counsel wants everyone to stop crying.`,
+  'Cry with dignity',{s:8,w:-4},'Let the evidence speak',{c:10},{cs:'magpie',stage:'trial',stamp:'COURT',Lo:{mistrial:true},Ro:{jail:true}});
+C('sauA2','md',`We found Pike hiding in a giant vat of chili oil at the warehouse. He's... marinating. Do we fish him out?`,
+  'Fish him out',{c:10,w:4},"Wait, he'll come out when he's tender",{s:6,c:-4},{cs:'sauce',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('sauT2','fenn',`Defence wants my lab results thrown out because the lab "smelled like dumplings." It did. I was eating dumplings.`,
+  'Walk them through the chain of custody',{c:8,s:4},'Bring the judge dumplings',{s:6,w:6},{cs:'sauce',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+C('sauT3','primm',`Pike's lawyer has asked the jury to "taste the difference." The jury is very interested. The judge appears hungry.`,
+  'Pass out napkins',{s:6,w:6},'Object, Your Honour',{c:10,b:4},{cs:'sauce',stage:'trial',stamp:'COURT',Lo:{mistrial:true},Ro:{jail:true}});
+C('stkA2','halvorsen',`Biscuit tracked Sticky Lachance to a pancake house in Ladner. He's on his fourth stack. Biscuit wants the fifth.`,
+  'Arrest him mid-stack',{c:10,w:4},'Let him finish',{s:6},{cs:'sticky',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('stkT2','jacko',`Lachance's lawyer says the syrup "flowed downhill into his boat, naturally." The boat was uphill.`,
+  'Present the elevation map',{c:10},'Debate gravity',{w:8},{cs:'sticky',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+C('stkT3','teddy',`The jury wants a field trip to the harbour to "understand the syrup." They've asked for pancakes on the bus.`,
+  'Order the pancakes',{s:8,w:4},'Keep it to the exhibits',{c:8,b:4},{cs:'sticky',stage:'trial',stamp:'COURT',Lo:{mistrial:true},Ro:{jail:true}});
+C('ghoA2','gilda',`The Ghost is at my front counter, reporting his own passport stolen. Under his fortieth name. He's very polite.`,
+  'Arrest him at the counter',{c:10,w:6},'Have him take a number',{s:4,w:-4},{cs:'ghost',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{ev:-1}});
+C('ghoT2','nora',`The Ghost came to court as three different people. The bailiff is confused. So am I. One of them waved.`,
+  'Fingerprint all three',{c:10},'Ask them to sit separately',{w:8},{cs:'ghost',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+C('ghoT3','teddy',`The defence claims "the Ghost" is a myth, like the Sasquatch. They've hired a Sasquatch expert.`,
+  'Cross-examine the Sasquatch expert',{w:10},'Present the forty-one passports',{c:10,b:4},{cs:'ghost',stage:'trial',stamp:'COURT',Lo:{mistrial:true},Ro:{jail:true}});
+C('vosA2','okonkwo',`Voss is leaving HQ through the loading dock with a hockey bag full of betting slips. I am standing in the loading dock. I am large.`,
+  'Block the dock',{c:12,s:8},'Arrest him politely',{b:6,c:8},{cs:'voss',stage:'arrest',stamp:'WARRANT',Lo:{arrest:true},Ro:{arrest:true}});
+C('vosT2','rourke',`The defence has called me as a character witness for Voss. I will tell the truth. The truth is not flattering.`,
+  'Let her testify',{c:10,b:8},'Ask her to go easy',{b:4,w:-4},{cs:'voss',stage:'trial',stamp:'COURT',Lo:{jail:true},Ro:{mistrial:true}});
+C('vosT3','lou',`Voss's lawyer argues betting on hockey is "a Canadian cultural practice." The union would like to file a brief agreeing. Then disagreeing.`,
+  'Debate Canadian culture',{w:8,s:4},'Stick to the ledger',{c:10},{cs:'voss',stage:'trial',stamp:'COURT',Lo:{mistrial:true},Ro:{jail:true}});
+
+/* --- acknowledgements: convictions, medals, gear --- */
+C('jail_magpie','nora',`The Magpie got eight years in Kent. He asked for a cell with good light. For crochet. The judge said yes?`,
+  'Close the file',{c:4},'Celebrate with the squad',{s:4},{special:true,stamp:'CONVICTED'});
+C('jail_sauce','teddy',`Desmond Pike, convicted. The Night Market is safe. The ketchup industry is in mourning.`,
+  'Close the file',{c:4},'Celebrate with the squad',{s:4},{special:true,stamp:'CONVICTED'});
+C('jail_sticky','jacko',`Sticky Lachance, convicted. The syrup is going home to Quebec. First class. It has earned it.`,
+  'Close the file',{c:4},'Celebrate with the squad',{s:4},{special:true,stamp:'CONVICTED'});
+C('jail_ghost','gilda',`The Ghost is in Kent. All forty-one of him. Intake had to fill out forty-one forms. I did them. You owe me.`,
+  'Close the file',{c:4},'Celebrate with the squad',{s:4},{special:true,stamp:'CONVICTED'});
+const ACK_L=['Accept with dignity',{s:3}],ACK_R=['Accept with swagger',{w:3}];
+[['depot','primm',`You survived orientation. Here is your Depot Graduate pin. Wear it with the quiet pride of someone who listened.`],
+ ['collar','okonkwo',`Your First Collar! I have baked a loaf shaped like handcuffs. Please do not arrest it.`],
+ ['commend','primm',`The Commissioner's Commendation. Her letter says "well done." It is the longest letter she has ever written.`],
+ ['bravery','nora',`Commendation for Bravery! You made an arrest while everything was on fire. Metaphorically. Mostly.`],
+ ['ride','jacko',`You rode in the Musical Ride! Gâteau says you have soft hands. It's the nicest thing he has ever said.`],
+ ['pesm','primm',`Twenty years. The Police Exemplary Service Medal. I am told this is a moment for a speech. Here is the speech: good.`],
+ ['lsm','okonkwo',`Twenty-five years! The Long Service Medal! Your chair has also been nominated for a medal.`],
+ ['exits','gilda',`Seen Every Exit. You've been removed from duty every possible way. HR made you a plaque. It's a revolving door.`],
+ ['om','rourke',`The Order of Merit of the Police Forces. Five villains in Kent, including one of ours. The Governor General would like a word. A nice one.`]
+].forEach(([id,who,t])=>C('ach_'+id,who,t,ACK_L[0],ACK_L[1],ACK_R[0],ACK_R[1],{special:true,stamp:'AWARDED'}));
+[['stetson','primm',`This is your badge. It is not a coaster. It is not a bottle opener. Constable Dooley, I am looking at you.`],
+ ['bird','magpie',`A parcel from Kent Institution. Inside: a crocheted bird and a note. "For luck. Visit sometime."`],
+ ['thermos','okonkwo',`Seized from the Sauce Boss's warehouse: one thermos, permanently full of double-double. Science cannot explain it.`],
+ ['stave','jacko',`A stave from Sticky's barrels. It smells like pancakes. Forever. I checked.`],
+ ['passport','teddy',`The Ghost's forty-first passport. Your photo is already in it. We don't know how.`],
+ ['ball','halvorsen',`Biscuit wants you to have his tennis ball. This has never happened. He's watching to see if you deserve it.`],
+ ['serge','primm',`Your own Red Serge. Please do not use it as a tablecloth. We all remember the gravy.`]
+].forEach(([id,who,t])=>C('gear_'+id,who,t,'Put it on the desk',{},'Show it off',{w:3},{special:true,stamp:'ISSUED'}));
+C('epilogue','primm',`Voss is in Kent Institution. I have smiled. That is twice since 2009. Do not tell anyone.`,
+  'Tell everyone',{s:10,w:8},'Never',{b:10,s:4},{special:true,stamp:'CLOSED'});
+
+/* ============== ENDINGS ============== */
+const ENDS={
+  c0:['primm',`Our clearance rate has reached zero. I have never seen a zero up close. It is round, Constable. You are transferred to a one-member post where the last crime was a stolen snowmobile in 1997.`,'TRANSFERRED'],
+  s0:['okonkwo',`The team held an intervention. Then a vote. Then a second, angrier vote. You are now the official detachment coffee runner. It's a double-double, every time.`,'DEMOTED'],
+  b0:['primm',`I am disappointed. Observe that my face has not moved. That is how disappointed I am. Report to exhibit storage. Bring a sweater.`,'REASSIGNED'],
+  w0:['gilda',`You lost your cool so hard you bought a fanny pack. Unironically. With a matching visor. I already listed your desk online.`,'UNCOOL'],
+  c100:['gilda',`Your clearance rate got so perfect HQ assumed it was fraud. The auditors arrived with their own chairs. Six months later you're suspended pending review. The review is also pending.`,'UNDER AUDIT'],
+  s100:['okonkwo',`The squad loves you so much nobody works anymore. Calls go unanswered. The Superintendent found you leading a conga line through Interview Room One. You are transferred somewhere with fewer friends.`,'TRANSFERRED'],
+  b100:['primm',`HQ adores you. You have been kicked upstairs to Ottawa to write reports about reports. You will never see a crime scene again. Congratulations, I suppose.`,'KICKED UPSTAIRS'],
+  w100:['nora',`You tried to arrest a suspect with a self-choreographed dance routine on the six o'clock news. He escaped. You're a meme. Professional Standards has questions.`,'VIRAL'],
+  bribe:['primm',`You lost exhibits for hockey tickets. Nosebleed seats. I am not angry about the corruption, Constable. I am angry about the seats. You are dismissed.`,'DISMISSED'],
+  pursuit:['okonkwo',`You chased a lawn gnome thief through a school zone at pickup time. The gnome is fine. Your career is not. Hand in your keys. All of them.`,'SUSPENDED'],
+  leak:['teddy',`You told a podcaster everything about an active file. He has forty thousand listeners. Two of them were the suspects. They left a five-star review.`,'FIRED'],
+  falsify:['primm',`You signed a false training record because the Assistant Commissioner asked nicely. He then reported you. He was very nice about that, too.`,'DISMISSED'],
+  scene:['fenn',`You tidied a crime scene for the photos. It looks lovely! It is also no longer evidence. Crown counsel would like a word. Several words.`,'REMOVED']
+};
+const ENDNAMES={c0:'Cases ran dry',s0:'Lost the squad',b0:'HQ gave up',w0:'Lost your cool',c100:'Too good to be true',s100:"Everyone's best friend",b100:'Kicked upstairs',w100:'Too much swagger',bribe:'Bought with nosebleeds',pursuit:'The gnome chase',leak:'Off the record',falsify:'Paper trail',scene:'Tidied the evidence'};
+for(const k in ENDS){const [who,t,stamp]=ENDS[k];C('end_'+k,who,t,'Clock out',{},'Clock out',{},{special:true,end:k,stamp,Lo:{restart:true},Ro:{restart:true}})}
+CARDS.forEach(c=>{if(/^(promo_|jail_|ach_|gear_)/.test(c.id)||c.id==='epilogue')c.ack=true});
+const byId={};CARDS.forEach(c=>byId[c.id]=c);
+const BAL={};['c','s','b','w'].forEach(k=>{let pos=0,neg=0;CARDS.forEach(c=>{if(c.special)return;for(const sd of ['L','R']){const v=c[sd][1][k]||0;if(v>0)pos+=v;else neg-=v}});
+  const r=Math.pow(neg/Math.max(1,pos),k==='w'?0.52:0.43);BAL[k]={p:Math.max(.45,Math.min(1.3,r)),n:Math.max(.75,Math.min(2.2,1/r))}});
+
+/* ============== CAREER SAVE ============== */
+const SAVE_KEY='richmond99.career';
+function newCareer(){const cases={};CASES.forEach((c,i)=>cases[c.id]={ev:0,st:i===0?'active':'locked'});
+  return{v:2,rev:0,best:0,postings:0,arrests:0,rank:0,met:{},endings:{},medals:{},items:{},cases,flags:{},tutorial:false,run:null}}
+function normalize(d){const n=newCareer();if(!d||typeof d!=='object')return n;for(const k in n){if(d[k]!==undefined)n[k]=d[k]}
+  CASES.forEach(c=>{if(!n.cases[c.id])n.cases[c.id]={ev:0,st:'locked'}});
+  for(const k in n.endings)if(!ENDS[k])delete n.endings[k];
+  if(!n.run)n.rank=0;
+  if(!CASES.some(c=>['active','wanted','custody'].includes(n.cases[c.id].st))){const nx=CASES.find(c=>n.cases[c.id].st!=='jailed');if(nx)n.cases[nx.id].st='active'}
+  return n}
+let career=newCareer();
+try{const raw=localStorage.getItem(SAVE_KEY);if(raw)career=normalize(JSON.parse(raw))}catch(e){}
+let remote=null,saveTimer=null,saving=false,dirty=false;
+function snapshot(){if(!state||state.over)return null;
+  return{m:state.m,shift:state.shift,flags:state.flags,recent:state.recent,used:state.used,queue:state.queue,
+    cardId:(()=>{try{return anim.pending?anim.pending.id:state.cardId}catch(e){return state.cardId}})(),lastWho:state.lastWho,birdUsed:state.birdUsed,unlocks:state.unlocks,sinceCase:state.sinceCase||0}}
+function saveCareer(){
+  career.rev=(career.rev||0)+1;if(state&&!state.over)career.run=snapshot();
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(career))}catch(e){}
+  if(!remote)return;dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(flushRemote,1200);
+}
+async function flushRemote(){if(saving||!dirty||!remote)return;saving=true;dirty=false;
+  try{await remote.set({v:2,rev:career.rev,json:JSON.stringify(career)})}catch(e){}
+  saving=false;if(dirty)flushRemote()}
+(async()=>{try{
+  if(!window.claude||!window.claude.use)return;
+  const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+  if(!db||!user)return;const id=await user.id();if(!id)return;
+  remote=db.doc('data/users/'+id+'/career');
+  const snap=await remote.get();
+  if(snap.exists){const d=snap.data();let parsed=null;try{parsed=JSON.parse(d.json)}catch(e){}
+    if(parsed&&(parsed.rev||0)>(career.rev||0)){career=normalize(parsed);try{localStorage.setItem(SAVE_KEY,JSON.stringify(career))}catch(e){}renderHud();refreshDesk()}
+    else if((career.rev||0)>(parsed?parsed.rev||0:0))saveCareer()}
+  else saveCareer();
+}catch(e){remote=null}})();
+
+/* ============== RUN STATE ============== */
+const KEYS=['c','s','b','w'];
+const LABELS={c:'Cases',s:'Squad',b:'Brass',w:'Swagger'};
+const DESCS={
+  c:'Files you close. Empty: shipped to a one-member post with a snowmobile. Full: your numbers look too good, and the auditors never leave.',
+  s:'How much the team likes you. Empty: mutiny. Full: nobody works, and the conga line is your fault.',
+  b:'What "E" Division HQ thinks of you. Empty: exhibit storage, bring a sweater. Full: kicked upstairs to an Ottawa desk forever.',
+  w:'Your cool. Empty: fanny pack and visor. Full: something unforgivable on live television.'
+};
+let state;
+function freshRun(){
+  const m={c:50,s:50,b:50,w:50};
+  return{m,shift:0,flags:{},recent:[],used:[],queue:[],cardId:'intro',lastWho:null,birdUsed:false,unlocks:[]}}
+function currentCase(){return CASES.find(c=>['active','wanted','custody'].includes(career.cases[c.id].st))||null}
+function available(c){
+  if(c.special||state.recent.includes(c.id)||state.used.includes(c.id))return false;
+  if(c.req&&!c.req.every(f=>state.flags[f]))return false;
+  if((c.not||[]).some(f=>state.flags[f]))return false;
+  if(c.rank&&career.rank<c.rank)return false;
+  if(c.cnot&&career.flags[c.cnot])return false;
+  if(c.after&&!jailed(c.after))return false;
+  if(c.who==='voss'&&jailed('voss')&&!c.cs)return false;
+  if(c.cs){const cur=currentCase();if(!cur||cur.id!==c.cs)return false;
+    const st=career.cases[c.cs].st;const need={lead:'active',arrest:'wanted',trial:'custody'}[c.stage];if(st!==need)return false}
+  return true}
+function pick(){
+  const due=state.queue.findIndex(q=>q.at<=state.shift);
+  if(due>=0){const q=state.queue.splice(due,1)[0];return byId[q.id]}
+  // keep the open file moving: its next step is never far away
+  const cur=currentCase();
+  if(cur){const stage={active:'lead',wanted:'arrest',custody:'trial'}[career.cases[cur.id].st];
+    const lim=stage==='lead'?4:2,chance=stage==='lead'?0.2:0.45;
+    if((state.sinceCase||0)>=lim||Math.random()<chance){
+      const opts=CARDS.filter(c=>c.cs===cur.id&&c.stage===stage&&c.id!==state.cardId);
+      const fresh=opts.filter(c=>!state.recent.includes(c.id)),pool2=fresh.length?fresh:opts;
+      if(pool2.length)return pool2[Math.floor(Math.random()*pool2.length)]}}
+  let pool=CARDS.filter(available);
+  if(!pool.length){state.recent=[];pool=CARDS.filter(available)}
+  const wt=c=>c.cs?(c.stage==='lead'?2.2:4):(c.rank?1.6:1);
+  let tot=pool.reduce((a,c)=>a+wt(c),0),r=Math.random()*tot;
+  for(const c of pool){r-=wt(c);if(r<=0)return c}return pool[0]}
+
+function unlocked(kind,name){state.unlocks.push(kind+': '+name)}
+function checkCareer(dying){
+  for(const m of MEDALS)if(!career.medals[m.id]&&m.test()){career.medals[m.id]=true;unlocked('Medal',m.name);if(!dying)state.queue.push({id:'ach_'+m.id,at:0})}
+  for(const it of ITEMS)if(!career.items[it.id]&&it.test()){career.items[it.id]=true;unlocked('Gear',it.name);if(!dying)state.queue.push({id:'gear_'+it.id,at:0})}
+  const nr=RANKS[career.rank+1];if(!dying&&nr&&nr.test()){career.rank++;unlocked('Promotion',nr.name);state.queue.push({id:'promo_'+nr.id,at:0})}
+  refreshDesk();
+}
+function caseOutcome(o){
+  const cur=currentCase();if(!cur)return;const cs=career.cases[cur.id];
+  if(o.ev>0){cs.ev=Math.min(cur.need,cs.ev+1);if(has('stave'))state.m.c+=state.m.c<50?3:state.m.c>50?-3:0;
+    if(cs.ev>=cur.need)cs.st='wanted'}
+  if(o.arrest){cs.st='custody';career.arrests++;if(KEYS.some(k=>state.m[k]<=15))career.flags.brave=true}
+  if(o.jail){cs.st='jailed';state.unlocks.push('Convicted: '+cur.name);
+    const nx=CASES.find(c=>career.cases[c.id].st==='locked');if(nx)career.cases[nx.id].st='active'
+    if(cur.id!=='voss')state.queue.push({id:'jail_'+cur.id,at:0});
+    if(cur.id==='voss'){career.flags.voss_gone=true;state.queue.push({id:'epilogue',at:state.shift+1})}}
+}
+const DIFF=[
+  {m:1.6,drift:1,note:'Pressure: steady. Every swing is manageable. Mostly.'},
+  {m:1.75,drift:1,note:'Pressure: rising. Bigger swings, and something always needs nudging.'},
+  {m:1.9,drift:2,note:'Pressure: real. Every shift pushes your standings around.'},
+  {m:2.05,drift:2,note:'Pressure: heavy. Every decision lands harder, in both directions.'},
+  {m:2.2,drift:3,note:'Pressure: maximum. One careless answer can tip any standing over the edge.'}];
+function adj(k,v){
+  {const d=DIFF[career.rank]||DIFF[0];const r=v*d.m*(v>0?BAL[k].p:BAL[k].n);v=v>0?Math.max(1,Math.round(r)):Math.min(-1,Math.round(r))}
+  const shrink=(x,n)=>x>0?Math.max(1,x-n):Math.min(-1,x+n);
+  if(k==='c'&&has('ball'))v=shrink(v,2);
+  if(k==='s'&&has('thermos'))v=shrink(v,2);
+  if(k==='b'&&has('serge'))v=shrink(v,2);
+  if(k==='w'&&has('stetson'))v=shrink(v,1);
+  if(k==='w'&&has('passport'))v=Math.max(-8,Math.min(8,v));
+  return v}
+function endCareer(key){
+  career.endings[key]=true;career.postings++;state.finalRank=career.rank;state.finalSvc=svc();
+  if(svc()>career.best)career.best=svc();
+  checkCareer(true);career.rank=0;career.run=null;state.over=true;refreshDesk();
+  return byId['end_'+key]}
+function choose(side){
+  const card=byId[state.cardId];const [,fx,o]=card[side];
+  for(const k of KEYS){if(fx[k]){const v=adj(k,fx[k]);state.m[k]=Math.max(0,Math.min(100,state.m[k]+v));flash(k,v>0)}}
+  if(o.set)state.flags[o.set]=true;
+  if(o.unset)delete state.flags[o.unset];
+  if(o.next)state.queue.push({id:o.next,at:state.shift+1+(o.delay||0)});
+  if(o.cflag)career.flags[o.cflag]=true;
+  if(o.tut)career.tutorial=true;
+  caseOutcome(o);
+  if(card.once)state.used.push(card.id);
+  state.sinceCase=card.cs?0:(state.sinceCase||0)+1;
+  state.recent.push(card.id);if(state.recent.length>22)state.recent.shift();
+  state.shift++;
+  {const d=DIFF[career.rank]||DIFF[0];if(d.drift&&!card.special){const k=KEYS[Math.floor(Math.random()*4)];state.m[k]=Math.max(0,Math.min(100,state.m[k]+(Math.random()<.5?-1:1)*d.drift))}}
+  if(o.fatal)return endCareer(o.fatal);
+  for(const k of KEYS){const v=state.m[k];
+    if(v<=0||v>=100){
+      if(has('bird')&&!state.birdUsed){state.birdUsed=true;state.m[k]=50;toast('Crocheted Bird',`It took the hit. ${LABELS[k]} back to 50.`);continue}
+      return endCareer(k+(v<=0?'0':'100'))}
+  }
+  if(svc()>career.best)career.best=svc();
+  checkCareer();
+  return pick()}
+
+/* ============== HUD ============== */
+const ICONS={
+  c:'<circle cx="13" cy="13" r="8"/><path d="M19 19l8.5 8.5"/>',
+  s:'<path d="M6 12h16v9a5 5 0 0 1-5 5h-6a5 5 0 0 1-5-5z"/><path d="M22 14h2.5a3 3 0 0 1 0 6H22"/><path d="M11 3.5c-1.6 2 1.6 3 0 5M16 3.5c-1.6 2 1.6 3 0 5" fill="none"/>',
+  b:'<path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z"/><path d="M16 10l1.8 3.7 4 .6-2.9 2.8.7 4L16 19.2l-3.6 1.9.7-4-2.9-2.8 4-.6z"/>',
+  w:'<path d="M3 12h26" fill="none"/><path d="M5 12h9v4a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M18 12h9v4a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4z"/>'
+};
+const $=id=>document.getElementById(id);
+$('meters').innerHTML=KEYS.map(k=>`<div class="meter" id="m-${k}" role="meter" aria-label="${LABELS[k]}" aria-valuemin="0" aria-valuemax="100">
+  <span class="dot" id="d-${k}"></span>
+  <svg viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id="cp-${k}"><rect id="r-${k}" x="-4" y="0" width="40" height="32"/></clipPath></defs>
+  <g class="ico-empty">${ICONS[k]}</g><g class="ico-full" clip-path="url(#cp-${k})">${ICONS[k]}</g></svg>
+  <span class="lbl">${LABELS[k]}</span></div>`).join('');
+$('legend').innerHTML=KEYS.map(k=>`<div class="lg"><svg viewBox="0 0 32 32" aria-hidden="true">${ICONS[k]}</svg><div><b>${LABELS[k]}</b><span>${DESCS[k]}</span></div></div>`).join('');
+const fmtYM=mo=>`${Math.floor(mo/12)}y ${mo%12}m`;
+function renderHud(){
+  if(!state)return;
+  for(const k of KEYS){const v=state.m[k],h=28*v/100;const r=$('r-'+k);r.setAttribute('y',30-h);r.setAttribute('height',h+2);
+    const el=$('m-'+k);el.setAttribute('aria-valuenow',v);el.classList.toggle('danger',v<=15||v>=85)}
+  $('when').textContent=RANKS[career.rank].name;
+  $('service').textContent='Service '+fmtYM(svc());
+  const cur=currentCase(),chip=$('caseChip');
+  if(!cur){chip.innerHTML='<span class="k">Case board</span><span class="n">All files closed</span>'}
+  else{const cs=career.cases[cur.id];const tag=cs.st==='wanted'?'<span class="tag">WARRANT</span>':cs.st==='custody'?'<span class="tag">COURT</span>':'';
+    chip.innerHTML=`<span class="k">Case ${CASES.indexOf(cur)+1}/${CASES.length}</span><span class="n">${cur.name}</span>${tag}<span class="pips">${Array.from({length:cur.need},(_,i)=>`<span class="pip${i<cs.ev?' on':''}"></span>`).join('')}</span>`}
+}
+function flash(k,up){const el=$('m-'+k);el.classList.remove('up','down');void el.offsetWidth;el.classList.add(up?'up':'down');setTimeout(()=>el.classList.remove('up','down'),700)}
+function previewDots(side){
+  const card=byId[state.cardId];const fx=side?card[side][1]:{};
+  for(const k of KEYS){const d=$('d-'+k);const v=fx[k]?adj(k,fx[k]):0;d.classList.toggle('on',!!v);d.classList.toggle('big',Math.abs(v)>=10)}}
+const qEl=$('q'),spEl=$('speaker');
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function renderText(){
+  const card=byId[state.cardId];const ch=CAST[card.who];
+  const contd=state.lastWho===card.who&&!card.end;
+  spEl.innerHTML=esc(ch.short)+(contd?" <em>(CONT'D)</em>":'');
+  qEl.innerHTML=esc(card.t).replace(/\*(.+?)\*/g,'<i>($1)</i>');
+  for(const k of KEYS)$('m-'+k).classList.toggle('hl',card.hl===k);
+  document.querySelector('.script').classList.toggle('shine',!!card.ack);
+}
+function toast(kind,msg){const t=document.createElement('div');t.className='toast';t.innerHTML=`<b>${esc(kind)}</b>${esc(msg)}`;$('toasts').appendChild(t);
+  setTimeout(()=>t.remove(),3400);while($('toasts').children.length>3)$('toasts').firstChild.remove()}
+
+/* ============== SHEETS ============== */
+let openModal=null,lastFocus=null;
+function show(id){lastFocus=document.activeElement;openModal=$(id);openModal.hidden=false;const b=openModal.querySelector('[data-close]');b&&b.focus()}
+function hide(){if(!openModal)return;openModal.hidden=true;openModal=null;canvas.focus()}
+document.querySelectorAll('.modal').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m&&m.id!=='summary')hide();if(e.target.closest('[data-close]'))hide()})});
+$('helpBtn').addEventListener('click',()=>{$('resetConfirm').hidden=true;$('resetBtn').hidden=false;show('guide')});
+$('resetBtn').addEventListener('click',()=>{$('resetBtn').hidden=true;$('resetConfirm').hidden=false;$('resetNo').focus()});
+$('resetNo').addEventListener('click',()=>{$('resetConfirm').hidden=true;$('resetBtn').hidden=false;$('resetBtn').focus()});
+$('resetYes').addEventListener('click',()=>{
+  career=newCareer();state=freshRun();state.cardId='t1';state.queue=['t2','t3','t4','t5','t6','t7'].map(id=>({id,at:0}));
+  anim.pending=null;anim.kb=null;anim.dx=0;anim.side=null;
+  hide();refreshDesk();meet('primm');saveCareer();drawFront(null);renderText();renderHud();
+  anim.mode='enter';anim.t=0;toast('Fresh start','Your career has been wiped. Welcome to Buffalo Detachment, Constable.')});
+$('caseChip').addEventListener('click',()=>{renderBoard();show('board')});
+function renderBoard(){
+  const stLabel={locked:'Classified',active:'Investigating',wanted:'Warrant out',custody:'In court',jailed:'Jailed'};
+  let h=`<div class="stats">
+    <div class="stat"><b>${RANKS[career.rank].abbr}</b><span>Current rank</span></div>
+    <div class="stat"><b>${fmtYM(svc())}</b><span>Current service</span></div>
+    <div class="stat"><b>${fmtYM(career.best)}</b><span>Longest career</span></div>
+    <div class="stat"><b>${career.arrests}</b><span>Arrests, all-time</span></div>
+    <div class="stat"><b>${jailedCount()}/${CASES.length}</b><span>Villains in Kent</span></div></div>
+    <p style="margin-top:12px">Rank and service reset when a career ends. Everything else on this board is forever. Like a tattoo, but with paperwork.</p>`;
+  h+='<h3>Rank</h3><div class="rows">'+RANKS.map((r,i)=>{const cur=i===career.rank,got=i<=career.rank;
+    return `<div class="row${got?'':' locked'}"><span class="t">${esc(r.name)}</span><span class="pill${cur?' hot':''}">${cur?'Current':got?'Held':'Locked'}</span><span class="d">${esc(r.role)}${got?'':' Promotion: '+esc(r.req)} ${esc(DIFF[i].note)}</span></div>`}).join('')+'</div>';
+  h+='<h3>Files</h3><div class="rows">'+CASES.map((c,i)=>{const cs=career.cases[c.id];
+    if(cs.st==='locked')return `<div class="row locked"><span class="t">File ${i+1}: Classified</span><span class="pill">Locked</span><span class="d">Close the previous file and someone might tell you about this one. Might.</span></div>`;
+    const cls=cs.st==='jailed'?'jailed':(cs.st==='wanted'||cs.st==='custody')?'hot':'';
+    const ev=cs.st==='jailed'?'':`<span class="ev">${Array.from({length:c.need},(_,j)=>`<i class="${j<cs.ev?'on':''}"></i>`).join('')}</span>`;
+    return `<div class="row"><span class="t">File ${i+1}: ${esc(c.name)}</span><span class="pill ${cls}">${stLabel[cs.st]}</span><span class="d">${esc(c.crime)}</span>${ev}</div>`}).join('')+'</div>';
+  h+='<h3>Medals</h3><div class="medals">'+MEDALS.map(m=>{const got=career.medals[m.id];
+    const rib=`linear-gradient(90deg,${m.rib.map((c,i,a)=>`${c} ${i/a.length*100}% ${(i+1)/a.length*100}%`).join(',')})`;
+    return `<div class="medal${got?'':' locked'}"><div class="ribbon" style="background:${rib}"></div><b>${esc(m.name)}</b><span>${got?'Awarded. ':'Locked. '}${esc(m.desc)}</span></div>`}).join('')+'</div>';
+  h+='<h3>Gear</h3><div class="rows">'+ITEMS.map(it=>{const got=career.items[it.id];
+    return `<div class="row${got?'':' locked'}"><span class="t">${esc(it.name)}</span><span class="pill">${got?'Equipped':'Locked'}</span><span class="d">${got?esc(it.fx):'Unlock: '+esc(it.how)}</span></div>`}).join('')+'</div>';
+  h+='<h3>People met</h3><div class="people">'+Object.keys(CAST).map(w=>{const n=career.met[w]||0,ch=CAST[w];
+    if(!n)return `<div class="person locked"><div class="ph">?</div><b>Unknown</b><span>Not met yet. Probably avoiding you.</span></div>`;
+    return `<div class="person"><img src="${thumb(w)}" alt="Portrait of ${esc(ch.name)}"><b>${esc(ch.name)}</b><em>${esc(ch.role)}</em><span>${esc(BIO[w]||'')}</span><small>Met ${n} time${n>1?'s':''}</small></div>`}).join('')+'</div>';
+  {const tot=Object.keys(ENDS).length,seen=Object.keys(ENDS).filter(k=>career.endings[k]);
+   h+=`<h3>Ways you've been removed</h3><p>${seen.length} of ${tot}${seen.length?': '+seen.map(k=>ENDNAMES[k]).join(', ')+'.':'. A spotless record. For now.'}</p>`}
+  $('boardBody').innerHTML=h;
+}
+function showSummary(endKey,run){
+  $('sEye').textContent='Career report · '+ENDS[endKey][2];
+  $('sT').textContent=ENDNAMES[endKey];
+  const cur=currentCase();
+  let h=`<div class="stats"><div class="stat"><b>${RANKS[run.finalRank||0].abbr}</b><span>Final rank</span></div><div class="stat"><b>${fmtYM(run.finalSvc||0)}</b><span>Service</span></div><div class="stat"><b>${jailedCount()}/${CASES.length}</b><span>Villains in Kent</span></div></div>`;
+  h+=`<p style="margin-top:12px">You're back to Constable with zero years on the clock. Your evidence, medals, gear and contacts survived. Your dignity is under review.</p>`;
+  h+='<h3>Earned this career</h3>'+(run.unlocks.length?`<ul class="unl">${run.unlocks.map(u=>`<li>${esc(u)}</li>`).join('')}</ul>`:'<p>Nothing new this time. The files kept your evidence warm.</p>');
+  if(cur){const cs=career.cases[cur.id];h+=`<h3>Open file</h3><p><b>${esc(cur.name)}</b>: ${cs.ev} of ${cur.need} evidence${cs.st==='wanted'?', warrant out':cs.st==='custody'?', awaiting trial':''}. It waited for you. It always does.</p>`}
+$('sumBody').innerHTML=h;show('summary');
+}
+
+/* ============== CANVAS ART ============== */
+function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function ell(g,x,y,rx,ry){g.beginPath();g.ellipse(x,y,rx,ry,0,0,Math.PI*2);g.fill()}
+function figure(g,cx,by,s,p){
+  const S=v=>v*s,hy=by-S(240),W=p.w||1;
+  g.save();
+  g.fillStyle=p.hc;
+  if(p.hair==='bob'){rr(g,cx-S(100),hy-S(98),S(200),S(200),S(80));g.fill()}
+  if(p.hair==='curly'){ell(g,cx,hy+S(10),S(118),S(122))}
+  // body
+  g.fillStyle=p.coat==='lab'?'#f4f2ec':p.shirt;rr(g,cx-S(150*W),by-S(150),S(300*W),S(260),S(85));g.fill();
+  if(p.plaid){g.save();rr(g,cx-S(150*W),by-S(150),S(300*W),S(260),S(85));g.clip();g.fillStyle='rgba(0,0,0,.28)';
+    for(let x=-160;x<160;x+=36){g.fillRect(cx+S(x),by-S(150),S(12),S(260))}for(let y=-150;y<110;y+=36){g.fillRect(cx-S(160),by+S(y),S(320),S(12))}g.restore()}
+  if(p.apron){g.fillStyle='#fbfaf6';rr(g,cx-S(85),by-S(120),S(170),S(200),S(14));g.fill();g.strokeStyle='#fbfaf6';g.lineWidth=S(10);g.beginPath();g.moveTo(cx-S(70),by-S(118));g.lineTo(cx-S(40),by-S(160));g.moveTo(cx+S(70),by-S(118));g.lineTo(cx+S(40),by-S(160));g.stroke();
+    g.fillStyle='rgba(200,48,44,.55)';ell(g,cx+S(30),by-S(60),S(14),S(9));ell(g,cx-S(25),by-S(30),S(8),S(6))}
+  if(p.coat==='lab'){g.fillStyle=p.shirt;g.beginPath();g.moveTo(cx-S(42),by-S(150));g.lineTo(cx+S(42),by-S(150));g.lineTo(cx,by-S(40));g.closePath();g.fill();
+    g.strokeStyle='rgba(0,0,0,.18)';g.lineWidth=S(4);g.beginPath();g.moveTo(cx-S(42),by-S(150));g.lineTo(cx,by-S(40));g.lineTo(cx+S(42),by-S(150));g.stroke()}
+  g.fillStyle=p.skin;g.fillRect(cx-S(32),by-S(185),S(64),S(48));
+  if(p.serge){g.fillStyle='#1c2340';rr(g,cx-S(56),by-S(160),S(112),S(34),S(8));g.fill();g.fillStyle='#d9b44a';
+    [by-S(100),by-S(55),by-S(10)].forEach(y=>ell(g,cx,y,S(9),S(9)));g.fillStyle='rgba(0,0,0,.18)';g.fillRect(cx-S(2),by-S(126),S(4),S(130))}
+  if(p.tie){g.fillStyle='#f3efe6';g.beginPath();g.moveTo(cx-S(44),by-S(150));g.lineTo(cx+S(44),by-S(150));g.lineTo(cx,by-S(92));g.closePath();g.fill();
+    g.fillStyle=p.tie;g.beginPath();g.moveTo(cx-S(11),by-S(146));g.lineTo(cx+S(11),by-S(146));g.lineTo(cx+S(18),by-S(20));g.lineTo(cx,by);g.lineTo(cx-S(18),by-S(20));g.closePath();g.fill()}
+  g.fillStyle=p.skin;ell(g,cx-S(76),hy+S(8),S(15),S(20));ell(g,cx+S(76),hy+S(8),S(15),S(20));
+  ell(g,cx,hy,S(76),S(92));
+  if(p.earrings){g.fillStyle='#e7c34a';ell(g,cx-S(78),hy+S(34),S(7),S(7));ell(g,cx+S(78),hy+S(34),S(7),S(7))}
+  g.fillStyle=p.hc;
+  const capTop=(cutY,ry)=>{g.save();g.beginPath();g.rect(cx-S(140),hy-S(200),S(280),cutY-(hy-S(200)));g.clip();ell(g,cx,hy+S(4),S(82),ry);g.restore()};
+  if(p.hair==='bob')capTop(hy-S(28),S(96));
+  if(p.hair==='short'){capTop(hy-S(38),S(96));g.fillRect(cx-S(78),hy-S(40),S(10),S(30));g.fillRect(cx+S(68),hy-S(40),S(10),S(30))}
+  if(p.hair==='slick'){capTop(hy-S(42),S(97));g.strokeStyle='rgba(255,255,255,.35)';g.lineWidth=S(3);g.beginPath();g.moveTo(cx-S(30),hy-S(92));g.quadraticCurveTo(cx-S(40),hy-S(60),cx-S(28),hy-S(44));g.stroke()}
+  if(p.hair==='bun'){capTop(hy-S(40),S(96));if(!p.hat)ell(g,cx,hy-S(104),S(30),S(26))}
+  if(p.hair==='curly'){for(let i=0;i<11;i++){const a=Math.PI*(1.0+i/10);ell(g,cx+Math.cos(a)*S(78),hy-S(10)+Math.sin(a)*S(86),S(30),S(30))}}
+  if(p.hair==='fringe'){ell(g,cx-S(70),hy-S(6),S(16),S(30));ell(g,cx+S(70),hy-S(6),S(16),S(30))}
+  if(p.hair==='bald'||p.hair==='fringe'){g.fillStyle='rgba(255,255,255,.18)';ell(g,cx-S(26),hy-S(58),S(22),S(12))}
+  if(p.beard){g.save();g.beginPath();g.rect(cx-S(100),hy+S(12),S(200),S(120));g.clip();g.fillStyle=p.hc;ell(g,cx,hy+S(30),S(78),S(74));g.restore()}
+  // hats
+  if(p.hat==='stetson'){g.fillStyle='#6e5034';ell(g,cx,hy-S(64),S(150),S(24));g.fillStyle='#7d5c3c';g.beginPath();
+    g.moveTo(cx-S(72),hy-S(66));g.lineTo(cx-S(60),hy-S(140));g.lineTo(cx-S(18),hy-S(160));g.lineTo(cx,hy-S(148));g.lineTo(cx+S(18),hy-S(160));g.lineTo(cx+S(60),hy-S(140));g.lineTo(cx+S(72),hy-S(66));g.closePath();g.fill();
+    g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.moveTo(cx-S(30),hy-S(150));g.lineTo(cx,hy-S(148));g.lineTo(cx-S(4),hy-S(90));g.closePath();g.fill();
+    g.fillStyle='#3d2a1a';g.fillRect(cx-S(70),hy-S(86),S(140),S(18))}
+  if(p.hat==='toque'){g.fillStyle=p.hatc;g.beginPath();g.ellipse(cx,hy-S(36),S(84),S(84),0,Math.PI,0);g.fill();g.fillStyle='rgba(255,255,255,.85)';g.fillRect(cx-S(86),hy-S(52),S(172),S(14));
+    g.fillStyle=p.hatc;g.fillRect(cx-S(88),hy-S(38),S(176),S(26));g.fillStyle='#f1e8d4';ell(g,cx,hy-S(124),S(24),S(24))}
+  if(p.hat==='chef'){g.fillStyle='#fbfaf6';g.fillRect(cx-S(70),hy-S(90),S(140),S(46));ell(g,cx-S(45),hy-S(118),S(42),S(40));ell(g,cx+S(45),hy-S(118),S(42),S(40));ell(g,cx,hy-S(140),S(48),S(44));
+    g.strokeStyle='rgba(0,0,0,.12)';g.lineWidth=S(3);g.strokeRect(cx-S(70),hy-S(90),S(140),S(46))}
+  if(p.hat==='cap'){g.fillStyle=p.hatc;g.beginPath();g.ellipse(cx,hy-S(40),S(82),S(74),0,Math.PI,0);g.fill();ell(g,cx,hy-S(40),S(100),S(16));g.fillStyle='#d9b44a';g.fillRect(cx-S(22),hy-S(80),S(44),S(16))}
+  // face
+  const ey=hy+S(4),ex=S(28);
+  if(p.sun){g.fillStyle='#0d0d0f';rr(g,cx-ex-S(24),ey-S(14),S(48),S(30),S(10));g.fill();rr(g,cx+ex-S(24),ey-S(14),S(48),S(30),S(10));g.fill();g.fillRect(cx-S(6),ey-S(6),S(12),S(5))}
+  else{g.fillStyle='#1a1512';ell(g,cx-ex,ey,S(7),S(9));ell(g,cx+ex,ey,S(7),S(9))}
+  g.strokeStyle=p.hair==='bald'?'#1a1512':p.hc;if(['#ece6d8','#d4cfc6','#bdb7ad','#e2c27a'].includes(p.hc))g.strokeStyle='#8a7a5a';
+  g.lineWidth=S(6);g.lineCap='round';const by0=ey-S(22);
+  for(const sx of [-1,1]){let inner=0,outer=0;if(p.brow==='angry'){inner=S(7);outer=-S(4)}if(p.brow==='worried'){inner=-S(7);outer=S(3)}if(p.brow==='raised'){inner=-S(8);outer=-S(8)}
+    g.beginPath();g.moveTo(cx+sx*S(14),by0+inner);g.lineTo(cx+sx*S(42),by0+outer);g.stroke()}
+  g.strokeStyle='rgba(0,0,0,.28)';g.lineWidth=S(4);g.beginPath();g.moveTo(cx,ey+S(8));g.quadraticCurveTo(cx-S(10),ey+S(28),cx+S(2),ey+S(32));g.stroke();
+  const my=hy+S(52);
+  if(p.goatee){g.fillStyle=p.hc;ell(g,cx,my+S(16),S(24),S(22))}
+  if(p.mustache){g.fillStyle=p.hc==='#d4cfc6'||p.hc==='#bdb7ad'?'#9a948a':p.hc;ell(g,cx-S(14),my-S(10),S(20),S(9));ell(g,cx+S(14),my-S(10),S(20),S(9))}
+  const mc=p.beard?'#f0d9c4':'#3a1f18';g.strokeStyle=mc;g.fillStyle=mc;g.lineWidth=S(5);g.beginPath();
+  if(p.mouth==='flat'){g.moveTo(cx-S(20),my);g.lineTo(cx+S(20),my);g.stroke()}
+  else if(p.mouth==='smile'){g.arc(cx,my-S(12),S(24),Math.PI*.2,Math.PI*.8);g.stroke()}
+  else if(p.mouth==='smirk'){g.moveTo(cx-S(20),my+S(2));g.quadraticCurveTo(cx+S(8),my+S(4),cx+S(24),my-S(8));g.stroke()}
+  else if(p.mouth==='open'){ell(g,cx,my+S(2),S(16),S(12))}
+  if(p.glasses&&!p.sun){g.strokeStyle='#121212';g.lineWidth=S(4.5);rr(g,cx-ex-S(22),ey-S(15),S(44),S(32),S(9));g.stroke();rr(g,cx+ex-S(22),ey-S(15),S(44),S(32),S(9));g.stroke();
+    g.beginPath();g.moveTo(cx-S(6),ey-S(4));g.lineTo(cx+S(6),ey-S(4));g.stroke()}
+  if(p.dog){const dx=cx+S(150),dy=by-S(70);g.fillStyle='#5c3a1e';g.beginPath();g.moveTo(dx-S(55),dy-S(40));g.lineTo(dx-S(35),dy-S(110));g.lineTo(dx-S(10),dy-S(50));g.closePath();g.fill();
+    g.beginPath();g.moveTo(dx+S(55),dy-S(40));g.lineTo(dx+S(35),dy-S(110));g.lineTo(dx+S(10),dy-S(50));g.closePath();g.fill();
+    g.fillStyle='#8a5a2b';ell(g,dx,dy,S(60),S(56));g.fillStyle='#d9b48a';ell(g,dx,dy+S(26),S(34),S(26));g.fillStyle='#111';ell(g,dx,dy+S(12),S(12),S(9));
+    ell(g,dx-S(24),dy-S(12),S(7),S(8));ell(g,dx+S(24),dy-S(12),S(7),S(8));g.fillStyle='#e07f8a';ell(g,dx+S(6),dy+S(48),S(10),S(14))}
+  g.restore();
+}
+function bird(g,cx,by,hat){
+  g.save();
+  g.fillStyle='#8f9590';ell(g,cx,by-150,150,105);
+  g.fillStyle='#6f7571';ell(g,cx-70,by-160,85,55);
+  g.fillStyle='#8f9590';ell(g,cx+105,by-255,70,66);
+  g.fillStyle='#e6e1d6';ell(g,cx+70,by-110,80,48);
+  g.strokeStyle='rgba(30,30,30,.22)';g.lineWidth=3;
+  for(let y=by-240;y<by-60;y+=16)for(let x=cx-130;x<cx+140;x+=18){g.beginPath();g.moveTo(x,y);g.lineTo(x+5,y+7);g.lineTo(x+10,y);g.stroke()}
+  g.fillStyle='#e0902f';g.beginPath();g.moveTo(cx+165,by-265);g.lineTo(cx+225,by-250);g.lineTo(cx+165,by-238);g.closePath();g.fill();
+  g.fillStyle='#111';ell(g,cx+122,by-268,10,10);g.fillStyle='#fff';ell(g,cx+125,by-271,3,3);
+  g.fillStyle='#5a5e5a';g.beginPath();g.moveTo(cx-140,by-150);g.lineTo(cx-245,by-200);g.lineTo(cx-235,by-120);g.closePath();g.fill();
+  if(hat){g.fillStyle='#6e5034';ell(g,cx+108,by-318,72,13);g.fillStyle='#7d5c3c';g.beginPath();g.moveTo(cx+72,by-318);g.lineTo(cx+80,by-360);g.lineTo(cx+100,by-370);g.lineTo(cx+108,by-364);g.lineTo(cx+116,by-370);g.lineTo(cx+136,by-360);g.lineTo(cx+144,by-318);g.closePath();g.fill()}
+  g.restore();
+}
+function seeded(n){let s=n;return()=>((s=(s*16807)%2147483647)/2147483647)}
+const thumbCache={};
+function thumb(who){if(thumbCache[who])return thumbCache[who];const c=document.createElement('canvas');c.width=c.height=180;const g=c.getContext('2d');
+  g.fillStyle='#c9d1cd';g.fillRect(0,0,180,180);g.strokeStyle='rgba(30,40,38,.3)';g.lineWidth=2;for(let y=30;y<180;y+=40){g.beginPath();g.moveTo(0,y);g.lineTo(180,y);g.stroke()}
+  const ch=CAST[who];
+  if(ch.bird){g.save();g.translate(95,178);g.scale(.4,.4);bird(g,0,0,false);g.restore()}
+  else if(ch.duo){figure(g,52,205,.42,ch.duo[0]);figure(g,128,210,.44,ch.duo[1])}
+  else{g.save();if(ch.p.dog)g.translate(-24,0);figure(g,90,215,ch.p.hat?.5:.56,ch.p);g.restore()}
+  return thumbCache[who]=c.toDataURL()}
+
+/* ---- award illustrations ---- */
+const LEAF_HALF=[[0,1],[.13,.7],[.3,.78],[.27,.5],[.55,.58],[.5,.38],[.65,.3],[.35,.1],[.4,-.02],[.07,.02],[.05,-.35],[0,-.35]];
+const LEAF_PTS=LEAF_HALF.concat(LEAF_HALF.slice(1,-1).reverse().map(([x,y])=>[-x,y]));
+function leaf2D(g,cx,cy,s){g.beginPath();LEAF_PTS.forEach(([x,y],i)=>{const X=cx+x*s,Y=cy-y*s;i?g.lineTo(X,Y):g.moveTo(X,Y)});g.closePath()}
+function emb(g,draw,light,dark){g.save();g.translate(3,4);g.fillStyle=g.strokeStyle=dark||'rgba(70,45,5,.45)';draw();g.restore();g.fillStyle=g.strokeStyle=light||'#f4e2a6';draw()}
+function shieldPath(g,W,H){const X=x=>(x+0.5)*W,Y=y=>(0.65-y)/1.3*H;
+  g.beginPath();g.moveTo(X(0),Y(.62));g.quadraticCurveTo(X(-.12),Y(.52),X(-.3),Y(.56));g.lineTo(X(-.42),Y(.6));
+  g.quadraticCurveTo(X(-.38),Y(.45),X(-.46),Y(.36));g.quadraticCurveTo(X(-.5),Y(.1),X(-.42),Y(-.15));g.quadraticCurveTo(X(-.3),Y(-.45),X(0),Y(-.62));
+  g.quadraticCurveTo(X(.3),Y(-.45),X(.42),Y(-.15));g.quadraticCurveTo(X(.5),Y(.1),X(.46),Y(.36));g.quadraticCurveTo(X(.38),Y(.45),X(.42),Y(.6));
+  g.lineTo(X(.3),Y(.56));g.quadraticCurveTo(X(.12),Y(.52),X(0),Y(.62));g.closePath()}
+function drawCrown(g,cx,y,s){
+  emb(g,()=>{g.fillRect(cx-60*s,y,120*s,22*s)});
+  g.fillStyle='#a3202a';g.beginPath();g.ellipse(cx,y,50*s,40*s,0,Math.PI,0);g.fill();
+  emb(g,()=>{g.lineWidth=9*s;g.beginPath();g.moveTo(cx-56*s,y);g.quadraticCurveTo(cx-50*s,y-60*s,cx,y-58*s);g.quadraticCurveTo(cx+50*s,y-60*s,cx+56*s,y);g.stroke();
+    g.beginPath();g.moveTo(cx,y);g.lineTo(cx,y-60*s);g.stroke();g.beginPath();g.arc(cx,y-74*s,13*s,0,Math.PI*2);g.fill();g.fillRect(cx-4*s,y-104*s,8*s,26*s);g.fillRect(cx-12*s,y-96*s,24*s,8*s)});
+  g.fillStyle='#2c40a8';[-36,0,36].forEach(dx=>{g.beginPath();g.arc(cx+dx*s,y+11*s,5*s,0,Math.PI*2);g.fill()})}
+function ribbonBand(g,x1,x2,y,bend,t){
+  g.lineWidth=4;g.strokeStyle='#f0d58a';
+  for(const [x,d] of [[x1,-1],[x2,1]]){g.beginPath();g.moveTo(x,y+10);g.lineTo(x+d*36,y+6);g.lineTo(x+d*22,y+t/2+8);g.lineTo(x+d*36,y+t+12);g.lineTo(x,y+t+2);g.closePath();g.fillStyle='#1f2f85';g.fill();g.stroke()}
+  g.beginPath();g.moveTo(x1,y);g.quadraticCurveTo((x1+x2)/2,y+bend,x2,y);g.lineTo(x2,y+t);g.quadraticCurveTo((x1+x2)/2,y+bend+t,x1,y+t);g.closePath();
+  const gr=g.createLinearGradient(0,y+bend,0,y+t);gr.addColorStop(0,'#3d55c9');gr.addColorStop(1,'#22338f');g.fillStyle=gr;g.fill();g.stroke()}
+const badgeCv=(()=>{const W=512,H=666,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  const X=x=>(x+0.5)*W,Y=y=>(0.65-y)/1.3*H;
+  g.save();shieldPath(g,W,H);g.clip();
+  const gr=g.createLinearGradient(0,0,W,H);gr.addColorStop(0,'#fbefc2');gr.addColorStop(.45,'#dcbc62');gr.addColorStop(1,'#9e7824');g.fillStyle=gr;g.fillRect(0,0,W,H);
+  const r=seeded(9);for(let i=0;i<14000;i++){g.fillStyle=r()<.5?'rgba(255,250,225,.4)':'rgba(90,60,10,.28)';g.fillRect(r()*W,r()*H,2,2)}
+  g.lineWidth=26;g.strokeStyle='#c9a440';shieldPath(g,W,H);g.stroke();g.lineWidth=6;g.strokeStyle='rgba(255,246,210,.8)';g.save();g.translate(W*.04,H*.035);g.scale(.92,.93);shieldPath(g,W,H);g.restore();g.stroke();
+  g.restore();
+  ribbonBand(g,X(-.33),X(.33),Y(.5),-34,54);
+  const cx=W/2,cy=Y(.17);
+  for(let i=0;i<20;i++){const a=(110+i*320/19)*Math.PI/180;const lx=cx+Math.cos(a)*92,ly=cy+Math.sin(a)*92;
+    emb(g,()=>{g.save();g.translate(lx,ly);g.rotate(a);g.beginPath();g.ellipse(0,0,8,20,0,0,Math.PI*2);g.fill();g.restore()})}
+  emb(g,()=>{g.lineWidth=8;g.beginPath();g.arc(cx,cy,70,0,Math.PI*2);g.stroke()});
+  emb(g,()=>{g.beginPath();g.ellipse(cx,cy+8,24,30,0,0,Math.PI*2);g.fill();g.lineWidth=9;g.beginPath();g.arc(cx-30,cy-14,18,Math.PI*.15,Math.PI*1.05);g.stroke();g.beginPath();g.arc(cx+30,cy-14,18,Math.PI*-.05,Math.PI*.85);g.stroke();
+    g.beginPath();g.ellipse(cx,cy-18,30,16,0,0,Math.PI*2);g.fill()});
+  drawCrown(g,cx,cy-112,.62);
+  ribbonBand(g,X(-.4),X(.4),Y(-.05),-26,54);
+  const pg=g.createLinearGradient(0,Y(-.27),0,Y(-.37));pg.addColorStop(0,'#fff8de');pg.addColorStop(1,'#c9a650');g.fillStyle=pg;rr(g,cx-100,Y(-.26),200,52,10);g.fill();g.strokeStyle='#a8862f';g.lineWidth=4;g.stroke();
+  return c})();
+const METALS={gold:['#fff1b8','#d4af37','#7d5e12'],silver:['#ffffff','#c7c9cc','#6f747a'],bronze:['#f6c896','#b07a3a','#5e3814']};
+function velvet(g,px,py,pw,ph){const gr=g.createRadialGradient(px+pw/2,py+ph*.45,20,px+pw/2,py+ph/2,pw*.75);gr.addColorStop(0,'#33447a');gr.addColorStop(1,'#10172e');g.fillStyle=gr;g.fillRect(px,py,pw,ph);
+  const r=seeded(4);for(let i=0;i<2500;i++){g.fillStyle=`rgba(255,255,255,${r()*.04})`;g.fillRect(px+r()*pw,py+r()*ph,2,2)}}
+function medalArt(g,cx,cy,m){
+  const rw=170,rh=150,top=cy-215,n=m.rib.length;
+  g.save();g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=24;g.shadowOffsetY=10;
+  g.beginPath();g.moveTo(cx-rw/2,top);g.lineTo(cx+rw/2,top);g.lineTo(cx+rw/2,top+rh);g.lineTo(cx,top+rh+34);g.lineTo(cx-rw/2,top+rh);g.closePath();g.fillStyle='#000';g.fill();g.restore();
+  g.save();g.beginPath();g.moveTo(cx-rw/2,top);g.lineTo(cx+rw/2,top);g.lineTo(cx+rw/2,top+rh);g.lineTo(cx,top+rh+34);g.lineTo(cx-rw/2,top+rh);g.closePath();g.clip();
+  m.rib.forEach((c,j)=>{g.fillStyle=c;g.fillRect(cx-rw/2+j*rw/n,top,rw/n+1,rh+40)});
+  const sh=g.createLinearGradient(cx-rw/2,0,cx+rw/2,0);sh.addColorStop(0,'rgba(0,0,0,.28)');sh.addColorStop(.5,'rgba(255,255,255,.14)');sh.addColorStop(1,'rgba(0,0,0,.28)');g.fillStyle=sh;g.fillRect(cx-rw/2,top,rw,rh+40);
+  g.strokeStyle='rgba(0,0,0,.08)';g.lineWidth=1;for(let y=top;y<top+rh+40;y+=4){g.beginPath();g.moveTo(cx-rw/2,y);g.lineTo(cx+rw/2,y);g.stroke()}
+  g.restore();
+  const om=m.metal==='om',M=METALS[om?'gold':m.metal],my=top+rh+34+108;
+  g.lineWidth=8;g.strokeStyle=M[1];g.beginPath();g.arc(cx,top+rh+46,14,0,Math.PI*2);g.stroke();
+  g.save();g.shadowColor='rgba(0,0,0,.55)';g.shadowBlur=26;g.shadowOffsetY=12;
+  if(om){
+    g.translate(cx,my);
+    const arm=()=>{g.beginPath();g.moveTo(-22,-20);g.lineTo(-48,-100);g.quadraticCurveTo(0,-84,48,-100);g.lineTo(22,-20);g.closePath()};
+    for(let i=0;i<4;i++){g.save();g.rotate(i*Math.PI/2);arm();g.fillStyle='#2a4ab0';g.fill();g.restore()}
+    g.shadowColor='transparent';
+    for(let i=0;i<4;i++){g.save();g.rotate(i*Math.PI/2);arm();g.lineWidth=7;g.strokeStyle=M[1];g.stroke();g.restore()}
+    g.fillStyle='#b3202a';g.beginPath();g.arc(0,0,40,0,Math.PI*2);g.fill();g.lineWidth=6;g.strokeStyle=M[1];g.stroke();
+    g.fillStyle=M[0];leaf2D(g,0,4,30);g.fill();
+    g.restore();drawCrown(g,cx,my-118,.55);
+  }else{
+    const rg=g.createRadialGradient(cx-30,my-34,10,cx,my,100);rg.addColorStop(0,M[0]);rg.addColorStop(.6,M[1]);rg.addColorStop(1,M[2]);
+    g.fillStyle=rg;g.beginPath();g.arc(cx,my,96,0,Math.PI*2);g.fill();g.restore();
+    g.lineWidth=6;g.strokeStyle=M[2];g.beginPath();g.arc(cx,my,80,0,Math.PI*2);g.stroke();
+    emb(g,()=>{leaf2D(g,cx,my+6,58);g.fill()},M[0],'rgba(0,0,0,.35)');
+  }
+}
+function chevronArt(g,cx,cy,n,crown){
+  g.save();g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=24;g.shadowOffsetY=10;g.fillStyle='#b3202a';rr(g,cx-160,cy-150+(crown?-40:0),320,300+(crown?60:0),26);g.fill();g.restore();
+  g.setLineDash([8,7]);g.strokeStyle='rgba(255,230,170,.5)';g.lineWidth=3;rr(g,cx-148,cy-138+(crown?-40:0),296,276+(crown?60:0),20);g.stroke();g.setLineDash([]);
+  const top=cy-(n-1)*36+(crown?24:0);
+  for(let i=0;i<n;i++){const y=top+i*72;
+    const path=()=>{g.beginPath();g.moveTo(cx-118,y-44);g.lineTo(cx,y+34);g.lineTo(cx+118,y-44)};
+    g.lineJoin='miter';g.lineCap='butt';
+    g.lineWidth=40;g.strokeStyle='#6e5212';g.save();g.translate(2,4);path();g.stroke();g.restore();
+    g.strokeStyle='#d9b44a';path();g.stroke();
+    g.lineWidth=2;g.strokeStyle='rgba(255,246,200,.6)';for(let k=-14;k<=14;k+=7){g.save();g.translate(0,k);path();g.stroke();g.restore()}}
+  if(crown)drawCrown(g,cx,cy-130,.95);
+}
+function pipArt(g,cx,cy,n){
+  g.save();g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=24;g.shadowOffsetY=10;g.fillStyle='#1c2340';
+  g.beginPath();g.moveTo(cx-85,cy+190);g.lineTo(cx-85,cy-130);g.quadraticCurveTo(cx,cy-205,cx+85,cy-130);g.lineTo(cx+85,cy+190);g.closePath();g.fill();g.restore();
+  emb(g,()=>{g.beginPath();g.arc(cx,cy-128,20,0,Math.PI*2);g.fill()});
+  for(let i=0;i<n;i++){const y=cy-30+i*130;
+    g.save();g.translate(cx,y);g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=10;g.shadowOffsetY=4;
+    g.beginPath();for(let k=0;k<16;k++){const a=k*Math.PI/8-Math.PI/2,rad=k%2?24:56;g.lineTo(Math.cos(a)*rad,Math.sin(a)*rad)}g.closePath();
+    const sg=g.createRadialGradient(-10,-10,4,0,0,56);sg.addColorStop(0,'#fff1b8');sg.addColorStop(1,'#a8821f');g.fillStyle=sg;g.fill();
+    g.shadowColor='transparent';g.fillStyle='#b3202a';g.beginPath();g.arc(0,0,18,0,Math.PI*2);g.fill();g.lineWidth=4;g.strokeStyle='#d4af37';g.stroke();g.restore()}
+}
+function gearArt(g,cx,cy,id){
+  g.save();g.shadowColor='rgba(0,0,0,.55)';g.shadowBlur=26;g.shadowOffsetY=12;
+  if(id==='stetson'){g.drawImage(badgeCv,cx-150,cy-195,300,390)}
+  else if(id==='thermos'){const gr=g.createLinearGradient(cx-70,0,cx+70,0);gr.addColorStop(0,'#7a1018');gr.addColorStop(.4,'#d33a3a');gr.addColorStop(1,'#7a1018');g.fillStyle=gr;rr(g,cx-70,cy-120,140,300,30);g.fill();
+    g.shadowColor='transparent';const sg=g.createLinearGradient(cx-74,0,cx+74,0);sg.addColorStop(0,'#7c8186');sg.addColorStop(.45,'#f2f4f6');sg.addColorStop(1,'#7c8186');g.fillStyle=sg;rr(g,cx-74,cy-180,148,70,14);g.fill();rr(g,cx-74,cy+150,148,36,12);g.fill();
+    g.strokeStyle='rgba(255,255,255,.55)';g.lineWidth=5;for(const dx of [-24,0,24]){g.beginPath();g.moveTo(cx+dx,cy-196);g.bezierCurveTo(cx+dx-18,cy-220,cx+dx+18,cy-236,cx+dx,cy-262);g.stroke()}}
+  else if(id==='stave'){g.translate(cx,cy);g.rotate(-0.25);const gr=g.createLinearGradient(0,-50,0,50);gr.addColorStop(0,'#b37a42');gr.addColorStop(1,'#6e4422');g.fillStyle=gr;g.beginPath();g.moveTo(-210,-34);g.quadraticCurveTo(0,-62,210,-34);g.lineTo(210,34);g.quadraticCurveTo(0,10,-210,34);g.closePath();g.fill();
+    g.shadowColor='transparent';g.strokeStyle='rgba(60,30,10,.4)';g.lineWidth=2;for(let k=-20;k<=20;k+=10){g.beginPath();g.moveTo(-200,k);g.quadraticCurveTo(0,k-26,200,k);g.stroke()}
+    g.fillStyle='#3a3a3a';g.fillRect(-140,-56,22,104);g.fillRect(118,-56,22,104);g.fillStyle='#e0902f';[[-40,40],[30,46],[80,38]].forEach(([x,y])=>{g.beginPath();g.ellipse(x,y,9,14,0,0,Math.PI*2);g.fill()})}
+  else if(id==='passport'){g.translate(cx,cy);g.rotate(0.12);g.fillStyle='#1f2f5a';rr(g,-130,-175,260,350,14);g.fill();g.shadowColor='transparent';
+    g.strokeStyle='#d4af37';g.lineWidth=4;rr(g,-112,-157,224,314,8);g.stroke();g.fillStyle='#d4af37';g.beginPath();g.arc(0,-20,56,0,Math.PI*2);g.fill();g.fillStyle='#1f2f5a';leaf2D(g,0,-16,38);g.fill();
+    g.fillStyle='#d4af37';g.fillRect(-60,80,120,8);g.fillRect(-40,100,80,8)}
+  else if(id==='ball'){const gr=g.createRadialGradient(cx-40,cy-50,10,cx,cy,140);gr.addColorStop(0,'#f2ff7a');gr.addColorStop(1,'#9bb21a');g.fillStyle=gr;g.beginPath();g.arc(cx,cy,140,0,Math.PI*2);g.fill();
+    g.shadowColor='transparent';g.strokeStyle='#fbfbf0';g.lineWidth=12;g.beginPath();g.arc(cx-150,cy,110,-0.9,0.9);g.stroke();g.beginPath();g.arc(cx+150,cy,110,Math.PI-0.9,Math.PI+0.9);g.stroke()}
+  else if(id==='serge'){g.fillStyle='#b3202a';g.beginPath();g.moveTo(cx-90,cy-170);g.lineTo(cx-200,cy-120);g.lineTo(cx-230,cy+60);g.lineTo(cx-170,cy+70);g.lineTo(cx-150,cy-40);g.lineTo(cx-140,cy+190);g.lineTo(cx+140,cy+190);g.lineTo(cx+150,cy-40);g.lineTo(cx+170,cy+70);g.lineTo(cx+230,cy+60);g.lineTo(cx+200,cy-120);g.lineTo(cx+90,cy-170);g.closePath();g.fill();
+    g.shadowColor='transparent';g.fillStyle='#1c2340';g.beginPath();g.moveTo(cx-90,cy-170);g.lineTo(cx+90,cy-170);g.lineTo(cx+70,cy-130);g.lineTo(cx-70,cy-130);g.closePath();g.fill();
+    g.fillStyle='rgba(0,0,0,.2)';g.fillRect(cx-3,cy-130,6,320);g.fillStyle='#d9b44a';for(let k=0;k<5;k++){g.beginPath();g.arc(cx,cy-100+k*62,11,0,Math.PI*2);g.fill()}
+    g.fillStyle='#1c2340';g.fillRect(cx-230,cy+40,62,24);g.fillRect(cx+168,cy+40,62,24)}
+  else if(id==='bird'){g.restore();bird(g,cx,cy+160,false);return}
+  g.restore()}
+function barsArt(g,px,py,pw,ph){
+  for(let x=px+34;x<px+pw;x+=70){const gr=g.createLinearGradient(x,0,x+18,0);gr.addColorStop(0,'#3a3d40');gr.addColorStop(.45,'#b7bcc0');gr.addColorStop(1,'#2a2c2e');g.fillStyle=gr;g.fillRect(x,py,18,ph)}
+  const hg=g.createLinearGradient(0,py+30,0,py+52);hg.addColorStop(0,'#b7bcc0');hg.addColorStop(1,'#3a3d40');g.fillStyle=hg;g.fillRect(px,py+30,pw,20);g.fillRect(px,py+ph-60,pw,20)}
+const JAILED_WHO={jail_magpie:'magpie',jail_sauce:'sauce',jail_sticky:'sticky',jail_ghost:'ghost',epilogue:'voss'};
+function plateFor(card){const by=CAST[card.who].name;
+  if(card.id.startsWith('ach_')){const m=MEDALS.find(x=>'ach_'+x.id===card.id);return{t:m.name,s:'Awarded · presented by '+by}}
+  if(card.id.startsWith('gear_')){const it=ITEMS.find(x=>'gear_'+x.id===card.id);return{t:it.name,s:'Issued · from '+by}}
+  if(card.id.startsWith('promo_')){const r=RANKS.find(x=>'promo_'+x.id===card.id);return{t:r.name,s:'Promotion · from '+by}}
+  if(JAILED_WHO[card.id])return{t:CAST[JAILED_WHO[card.id]].name,s:'Convicted · Kent Institution'};
+  return null}
+function heightChart(g,px,py,pw,ph){g.fillStyle='#c9d1cd';g.fillRect(px,py,pw,ph);
+  g.strokeStyle='rgba(30,40,38,.35)';g.fillStyle='rgba(30,40,38,.55)';g.lineWidth=2;g.font=`700 18px ${TYPE}`;
+  const marks=['210 cm','195','180','165','150','135'];
+  for(let i=0;i<marks.length;i++){const y=py+40+i*72;g.beginPath();g.moveTo(px,y);g.lineTo(px+pw,y);g.stroke();g.fillText(marks[i],px+10,y-6);
+    for(let j=1;j<4;j++){const yy=y+j*18;g.beginPath();g.moveTo(px,yy);g.lineTo(px+22,yy);g.stroke()}}}
+function portrait(g,who,px,py,pw,ph,hatBird){const ch=CAST[who];
+  if(ch.bird)bird(g,px+pw/2,py+ph,hatBird);
+  else if(ch.duo){figure(g,px+pw/2-115,py+ph+30,0.98,ch.duo[0]);figure(g,px+pw/2+115,py+ph+40,1.02,ch.duo[1])}
+  else figure(g,px+pw/2-(ch.p.dog?50:0),py+ph+30,ch.p.hat?1.18:1.32,ch.p)}
+const FW=600,FH=800;
+const frontCv=document.createElement('canvas');frontCv.width=FW;frontCv.height=FH;const fg=frontCv.getContext('2d');
+const backCv=document.createElement('canvas');backCv.width=FW;backCv.height=FH;const bgc=backCv.getContext('2d');
+function manila(g,base){
+  g.fillStyle=base;g.fillRect(0,0,FW,FH);const r=seeded(11);
+  for(let i=0;i<1400;i++){g.fillStyle=`rgba(${r()<.5?'90,60,20':'255,245,220'},${r()*.07})`;g.fillRect(r()*FW,r()*FH,1+r()*3,1+r()*3)}
+  g.strokeStyle='rgba(90,60,20,.35)';g.lineWidth=3;rr(g,22,22,FW-44,FH-44,18);g.stroke()}
+function fitFont(g,text,weight,size,family,maxW){let s=size;do{g.font=`${weight} ${s}px ${family}`;s-=2}while(g.measureText(text).width>maxW&&s>18);return s}
+function wrap(g,text,maxW){const words=text.split(' ');const lines=[];let line='';for(const w of words){const t=line?line+' '+w:w;if(g.measureText(t).width>maxW&&line){lines.push(line);line=w}else line=t}lines.push(line);return lines}
+const DISPLAY='"Big Shoulders Display", "Arial Narrow", Impact, sans-serif',TYPE='"Courier Prime", "Courier New", monospace';
+function optTag(o){return''}
+function drawFront(side){
+  const card=byId[state.cardId],ch=CAST[card.who],g=fg;
+  g.textBaseline='alphabetic';g.textAlign='left';
+  manila(g,'#e6cd92');
+  g.fillStyle='#5b4220';g.font=`700 24px ${TYPE}`;
+  g.fillText('RCMP · BUFFALO DET.',44,70);g.textAlign='right';g.fillText('FILE '+String(state.shift+1).padStart(4,'0'),556,70);g.textAlign='left';
+  const px=44,py=92,pw=512,ph=470;
+  g.save();rr(g,px,py,pw,ph,10);g.clip();
+  const cx0=px+pw/2,cy0=py+ph/2;
+  if(card.id.startsWith('ach_')){velvet(g,px,py,pw,ph);medalArt(g,cx0,cy0,MEDALS.find(x=>'ach_'+x.id===card.id))}
+  else if(card.id.startsWith('gear_')){velvet(g,px,py,pw,ph);gearArt(g,cx0,cy0+10,card.id.slice(5))}
+  else if(card.id.startsWith('promo_')){velvet(g,px,py,pw,ph);const r=card.id.slice(6);
+    if(r==='insp')pipArt(g,cx0,cy0+20,2);else chevronArt(g,cx0,cy0+10,r==='cpl'?2:3,r==='ssgt')}
+  else if(JAILED_WHO[card.id]){heightChart(g,px,py,pw,ph);portrait(g,JAILED_WHO[card.id],px,py,pw,ph,false);barsArt(g,px,py,pw,ph)}
+  else{heightChart(g,px,py,pw,ph);portrait(g,card.who,px,py,pw,ph,card.id==='mag2')}
+  g.restore();
+  g.strokeStyle='rgba(40,30,15,.5)';g.lineWidth=3;rr(g,px,py,pw,ph,10);g.stroke();
+  const plate=plateFor(card)||{t:ch.name,s:ch.role};
+  g.fillStyle='#1d1a14';const n=plate.t.toUpperCase();fitFont(g,n,900,62,DISPLAY,512);g.fillText(n,44,632);
+  g.fillStyle='#8a2a1c';fitFont(g,plate.s,700,26,TYPE,512);g.fillText(plate.s,44,674);
+  g.strokeStyle='rgba(90,60,20,.3)';g.lineWidth=2;for(let y=708;y<760;y+=24){g.beginPath();g.moveTo(44,y);g.lineTo(556,y);g.stroke()}
+  g.fillStyle='rgba(60,40,15,.55)';g.font=`400 18px ${TYPE}`;
+  const cur=currentCase();g.fillText(card.cs&&cur?`OPEN FILE: ${cur.name.toUpperCase()}`:`STATUS: ${card.end?'CLOSED':'OPEN'}   CLEARANCE: ${state.m.c}%`,44,702);
+  g.strokeStyle='#9aa3a6';g.lineWidth=7;g.lineCap='round';g.beginPath();g.moveTo(470,10);g.lineTo(470,120);g.arc(490,120,20,Math.PI,0,true);g.lineTo(510,30);g.arc(495,30,15,0,Math.PI,true);g.lineTo(480,105);g.stroke();
+  if(card.stamp){g.save();g.translate(445,738);g.rotate(-0.1);g.strokeStyle='rgba(200,50,35,.85)';g.fillStyle='rgba(200,50,35,.85)';g.lineWidth=6;
+    const sz=fitFont(g,card.stamp,900,44,DISPLAY,200);g.textAlign='center';const tw=g.measureText(card.stamp).width;
+    rr(g,-tw/2-16,-sz+2,tw+32,sz+14,8);g.stroke();g.fillText(card.stamp,0,4);g.restore()}
+  const isNew=state.newContact===card.who&&!card.ack&&!card.end;
+  if(card.ack){g.strokeStyle='#c9a227';g.lineWidth=12;rr(g,8,8,FW-16,FH-16,24);g.stroke();g.strokeStyle='#f3dc8a';g.lineWidth=3;rr(g,28,28,FW-56,FH-56,14);g.stroke()}
+  if(isNew){g.fillStyle='#c9a227';rr(g,56,104,220,46,6);g.fill();g.fillStyle='#2a1d0e';g.font=`900 32px ${DISPLAY}`;g.textAlign='left';g.fillText('NEW CONTACT',72,138)}
+  shine.visible=!!card.ack;
+  if(side){
+    const label=card[side][0],tag=optTag(card[side][2]);
+    const grd=g.createLinearGradient(0,0,0,FH*0.64);grd.addColorStop(0,'rgba(12,18,16,.95)');grd.addColorStop(.62,'rgba(12,18,16,.85)');grd.addColorStop(1,'rgba(12,18,16,0)');
+    g.fillStyle=grd;g.fillRect(0,0,FW,FH*0.64);
+    g.fillStyle='#f1e8d4';g.textAlign='center';g.textBaseline='middle';
+    let fs=72,lines;do{g.font=`900 ${fs}px ${DISPLAY}`;lines=wrap(g,label.toUpperCase(),500);fs-=4}while((lines.length>3||lines.some(l=>g.measureText(l).width>520))&&fs>34);
+    const lh=fs+4;let y=170-(lines.length-1)*lh/2;
+    for(const l of lines){g.fillText(l,FW/2,y);y+=lh}
+    g.fillStyle='#f2a33a';g.fillRect(FW/2-40,y-lh*0.3,80,6);
+    if(tag){g.font=`700 28px ${TYPE}`;g.fillStyle='#f2a33a';g.fillText(tag,FW/2,y+30)}
+    g.textAlign='left';g.textBaseline='alphabetic'}
+  frontTex.needsUpdate=true;
+}
+function drawBack(){
+  const g=bgc;manila(g,'#d6b978');
+  g.fillStyle='rgba(80,55,20,.85)';g.textAlign='center';g.font=`900 260px ${DISPLAY}`;g.fillText('99',FW/2,450);
+  g.font=`700 28px ${TYPE}`;g.fillText('MAJOR CRIME · BUFFALO DET.',FW/2,520);
+  g.save();g.translate(FW/2,640);g.rotate(-0.12);g.strokeStyle='rgba(190,45,30,.75)';g.fillStyle='rgba(190,45,30,.75)';g.lineWidth=6;
+  g.font=`900 64px ${DISPLAY}`;rr(g,-200,-62,400,84,10);g.stroke();g.fillText('CASE FILE',0,4);g.restore();g.textAlign='left';
+  backTex.needsUpdate=true}
+
+/* ============== THREE SCENE ============== */
+const canvas=$('gl');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.setClearColor(0x0e1513);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(32,1,1,120);
+scene.add(new THREE.HemisphereLight(0xffe6c0,0x16302a,0.85));
+const key=new THREE.DirectionalLight(0xffd9a0,0.75);key.position.set(-4,5,10);scene.add(key);
+const lamp=new THREE.PointLight(0xffa64a,0.9,30,2);lamp.position.set(-5,5,4);scene.add(lamp);
+const maxAniso=renderer.capabilities.getMaxAnisotropy();
+const tex=cv=>{const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.anisotropy=maxAniso;return t};
+const frontTex=tex(frontCv),backTex=tex(backCv);
+const deskCv=document.createElement('canvas');deskCv.width=deskCv.height=1024;{const g=deskCv.getContext('2d');g.fillStyle='#2e1f15';g.fillRect(0,0,1024,1024);const r=seeded(5);
+  for(let i=0;i<260;i++){const y=r()*1024;g.strokeStyle=`rgba(${r()<.5?'15,8,4':'90,60,38'},${.08+r()*.18})`;g.lineWidth=1+r()*4;g.beginPath();g.moveTo(0,y);
+    g.bezierCurveTo(300,y+(r()-.5)*40,700,y+(r()-.5)*40,1024,y+(r()-.5)*20);g.stroke()}
+  g.fillStyle='rgba(0,0,0,.35)';for(let k=0;k<4;k++)g.fillRect(0,k*256,1024,3)}
+const deskTex=tex(deskCv);deskTex.wrapS=deskTex.wrapT=THREE.RepeatWrapping;deskTex.repeat.set(3,3);
+const desk=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({map:deskTex,roughness:.75}));desk.position.z=-0.3;scene.add(desk);
+const blCv=document.createElement('canvas');blCv.width=blCv.height=512;{const g=blCv.getContext('2d');for(let y=0;y<512;y+=64){const grd=g.createLinearGradient(0,y,0,y+36);grd.addColorStop(0,'rgba(255,170,80,0)');grd.addColorStop(.5,'rgba(255,170,80,.16)');grd.addColorStop(1,'rgba(255,170,80,0)');g.fillStyle=grd;g.fillRect(0,y,512,36)}}
+const blinds=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshBasicMaterial({map:tex(blCv),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+blinds.material.map.wrapS=blinds.material.map.wrapT=THREE.RepeatWrapping;blinds.material.map.repeat.set(1,5);blinds.position.z=-0.2;blinds.rotation.z=0.5;scene.add(blinds);
+function blobTex(){const c=document.createElement('canvas');c.width=256;c.height=256;const g=c.getContext('2d');g.filter='blur(18px)';g.fillStyle='rgba(0,0,0,1)';rr(g,40,40,176,176,16);g.fill();return new THREE.CanvasTexture(c)}
+const shadowMat=new THREE.MeshBasicMaterial({map:blobTex(),transparent:true,opacity:.6,depthWrite:false});
+const CW=3,CH=4,PIV=4.2,CZ=0.6;
+function rrShape(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.quadraticCurveTo(x+w,y,x+w,y+r);s.lineTo(x+w,y+h-r);s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);s.lineTo(x+r,y+h);s.quadraticCurveTo(x,y+h,x,y+h-r);s.lineTo(x,y+r);s.quadraticCurveTo(x,y,x+r,y);return s}
+const shape=rrShape(CW,CH,0.14);
+const faceGeo=new THREE.ShapeGeometry(shape,8);{const p=faceGeo.attributes.position,uv=faceGeo.attributes.uv;for(let i=0;i<p.count;i++)uv.setXY(i,(p.getX(i)+CW/2)/CW,(p.getY(i)+CH/2)/CH)}
+const edgeGeo=new THREE.ExtrudeGeometry(shape,{depth:0.05,bevelEnabled:false,curveSegments:8});
+const faceMat=map=>new THREE.MeshStandardMaterial({map,roughness:.9,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+function makeCard(frontMap){const g=new THREE.Group();
+  const f=new THREE.Mesh(faceGeo,faceMat(frontMap));f.position.z=0.04;g.add(f);
+  const b=new THREE.Mesh(faceGeo,faceMat(backTex));b.rotation.y=Math.PI;b.position.z=-0.04;g.add(b);
+  const e=new THREE.Mesh(edgeGeo,new THREE.MeshStandardMaterial({color:0xb89a5c,roughness:.9}));e.position.z=-0.025;g.add(e);return g}
+const pivot=new THREE.Group();scene.add(pivot);
+const cardObj=makeCard(frontTex);cardObj.position.y=PIV;pivot.add(cardObj);
+const holoMat=new THREE.ShaderMaterial({
+  uniforms:{uTime:{value:0},uTilt:{value:0}},
+  vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:[
+    'varying vec2 vUv;uniform float uTime;uniform float uTilt;',
+    'float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}',
+    'void main(){vec2 uv=vUv;',
+    ' float band=uv.x*1.1+uv.y*0.9+uTilt*2.2+uTime*0.05;',
+    ' vec3 rainbow=0.5+0.5*cos(6.2831*(band+vec3(0.0,0.33,0.67)));',
+    ' float lines=0.55+0.45*sin((uv.x*0.8+uv.y)*260.0+uTilt*30.0);',
+    ' float wave=0.6+0.4*sin(uv.x*9.0-uv.y*7.0+uTilt*6.0+uTime*0.4);',
+    ' float inArt=step(0.073,uv.x)*step(uv.x,0.927)*step(0.2975,uv.y)*step(uv.y,0.885);',
+    ' float edge=1.0-step(0.045,uv.x)*step(uv.x,0.955)*step(0.035,uv.y)*step(uv.y,0.965);',
+    ' float m=max(mix(0.07,0.32,inArt),edge*0.5);',
+    ' vec2 cell=floor(uv*vec2(48.0,64.0));float h=hash(cell);',
+    ' vec2 f=fract(uv*vec2(48.0,64.0))-0.5;float star=smoothstep(0.22,0.0,length(f));',
+    ' float tw=pow(max(0.0,sin(uTime*2.2+h*60.0+uTilt*12.0)),8.0);',
+    ' float sp=step(0.965,h)*star*tw*(0.35+0.65*inArt+edge);',
+    ' vec3 col=rainbow*lines*wave*m+vec3(1.0,0.97,0.88)*sp*0.9;',
+    ' gl_FragColor=vec4(col,1.0);}'].join('\n'),
+  transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+const shine=new THREE.Mesh(faceGeo,holoMat);
+shine.position.z=0.046;shine.visible=false;cardObj.add(shine);
+const cardShadow=new THREE.Mesh(new THREE.PlaneGeometry(CW*1.35,CH*1.3),shadowMat);cardShadow.position.z=-0.27;scene.add(cardShadow);
+const deck=new THREE.Group();scene.add(deck);
+[[-0.02,0.05,-0.04],[0.05,-0.03,0.03]].forEach(([x,y,r],i)=>{const d=makeCard(backTex);d.rotation.y=Math.PI;d.position.set(x,y,-0.05-i*0.12);d.rotation.z=r;deck.add(d)});
+const deckShadow=new THREE.Mesh(new THREE.PlaneGeometry(CW*1.3,CH*1.25),shadowMat.clone());deckShadow.material.opacity=.45;deck.add(deckShadow);deckShadow.position.z=-0.4;
+// props
+const props=new THREE.Group();scene.add(props);
+const std=(color,o={})=>new THREE.MeshStandardMaterial(Object.assign({color,roughness:.6},o));
+const mug=new THREE.Group();{
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.58,0.55,40,1,true),std(0xe9e2d2,{roughness:.5,side:THREE.DoubleSide}));body.rotation.x=Math.PI/2;mug.add(body);
+  const coffee=new THREE.Mesh(new THREE.CircleGeometry(0.58,40),std(0x2a160b,{roughness:.2}));coffee.position.z=0.2;mug.add(coffee);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(0.61,0.035,8,48),std(0xf3eee2,{roughness:.4}));rim.position.z=0.275;mug.add(rim);
+  const handle=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.07,10,24,Math.PI),std(0xe9e2d2,{roughness:.5}));handle.rotation.set(Math.PI/2,0,-Math.PI/2);handle.position.x=0.6;mug.add(handle);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(0.625,0.6,0.1,40,1,true),std(0xb3202a));band.rotation.x=Math.PI/2;band.position.z=0.05;mug.add(band);
+  mug.position.z=-0.02;props.add(mug)}
+const hat=new THREE.Group();{
+  const felt=std(0x4e3925,{roughness:1}),feltDark=std(0x3a2a1b,{roughness:1});
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,0.035,72),felt);brim.rotation.x=Math.PI/2;hat.add(brim);
+  const edge=new THREE.Mesh(new THREE.TorusGeometry(1.2,0.028,8,72),feltDark);hat.add(edge);
+  const pts=[[0.6,0],[0.6,0.1],[0.585,0.22],[0.53,0.36],[0.43,0.48],[0.28,0.57],[0.11,0.615],[0,0.625]].map(([r,y])=>new THREE.Vector2(r,y));
+  const cg=new THREE.LatheGeometry(pts,96);const pos=cg.attributes.position;
+  for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i),zz=pos.getZ(i);const a=Math.atan2(x,zz);
+    const d=Math.pow(Math.max(0,Math.cos(4*a)),3),t=Math.max(0,(y-0.12)/0.5),k=1-0.32*d*t;   // four Montana-peak pinches
+    pos.setXYZ(i,x*k,y-0.07*d*t,zz*k)}
+  cg.computeVertexNormals();
+  const crown=new THREE.Mesh(cg,felt);crown.rotation.x=Math.PI/2;hat.add(crown);
+  const band=new THREE.Mesh(new THREE.CylinderGeometry(0.607,0.607,0.09,72,1,true),std(0x24180e,{roughness:.55}));band.rotation.x=Math.PI/2;band.position.z=0.07;hat.add(band);
+  const holes=std(0xc9a227,{metalness:.8,roughness:.35});[-1,1].forEach(sx=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.03,8,6),holes);e.position.set(sx*0.32,0.42,0.3);hat.add(e)});
+  hat.position.z=-0.25;hat.scale.set(2.0,2.0,1.1);props.add(hat)}
+const badge=new THREE.Group();{
+  const sh=new THREE.Shape();sh.moveTo(0,.62);sh.quadraticCurveTo(-.12,.52,-.3,.56);sh.lineTo(-.42,.6);sh.quadraticCurveTo(-.38,.45,-.46,.36);sh.quadraticCurveTo(-.5,.1,-.42,-.15);
+  sh.quadraticCurveTo(-.3,-.45,0,-.62);sh.quadraticCurveTo(.3,-.45,.42,-.15);sh.quadraticCurveTo(.5,.1,.46,.36);sh.quadraticCurveTo(.38,.45,.42,.6);sh.lineTo(.3,.56);sh.quadraticCurveTo(.12,.52,0,.62);
+  const wallet=new THREE.Mesh(new THREE.BoxGeometry(1.75,2.25,0.06),std(0x17110d,{roughness:.7}));wallet.position.set(0,-0.05,-0.08);badge.add(wallet);
+  const rim=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:0.04,bevelEnabled:true,bevelThickness:0.02,bevelSize:0.02,bevelSegments:2,curveSegments:16}),std(0xc9a440,{metalness:.85,roughness:.32}));
+  rim.scale.set(1.35,1.35,1);badge.add(rim);
+  const fg2=new THREE.ShapeGeometry(sh,16);{const p=fg2.attributes.position,uv=fg2.attributes.uv;for(let i=0;i<p.count;i++)uv.setXY(i,p.getX(i)+0.5,(p.getY(i)+0.65)/1.3)}
+  const bt=tex(badgeCv);
+  const face=new THREE.Mesh(fg2,new THREE.MeshStandardMaterial({map:bt,bumpMap:bt,bumpScale:0.012,metalness:.5,roughness:.38}));face.scale.set(1.35,1.35,1);face.position.z=0.065;badge.add(face);
+  badge.position.z=-0.18;badge.visible=false;props.add(badge)}
+const donuts=new THREE.Group();{
+  donuts.add(new THREE.Mesh(new THREE.BoxGeometry(2.6,2.6,0.25),std(0xc9a57a,{roughness:.9})));
+  const inner=new THREE.Mesh(new THREE.PlaneGeometry(2.4,2.4),std(0xf3e6cf,{roughness:.9}));inner.position.z=0.13;donuts.add(inner);
+  const cols=[0xb4732f,0x5b3a29,0xb4732f];
+  [[-0.6,0.6],[0.6,0.6],[-0.6,-0.6]].forEach(([x,y],i)=>{const d=new THREE.Mesh(new THREE.TorusGeometry(0.36,0.17,14,30),std(0xd29a5a,{roughness:.8}));d.position.set(x,y,0.25);donuts.add(d);
+    const ic=new THREE.Mesh(new THREE.TorusGeometry(0.36,0.13,12,30),std(cols[i],{roughness:.35}));ic.position.set(x,y,0.31);ic.scale.z=0.5;donuts.add(ic)});
+  donuts.position.z=-0.3;donuts.rotation.z=0.25;props.add(donuts)}
+const pencil=new THREE.Group();{
+  pencil.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,2.2,6),std(0xf2b82e)));
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.07,0.25,6),std(0xe8cfa4));tip.position.y=1.22;pencil.add(tip);
+  const er=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.075,0.18,12),std(0xe07f8a));er.position.y=-1.19;pencil.add(er);
+  pencil.position.z=-0.22;pencil.rotation.z=Math.PI/2+0.12;props.add(pencil)}
+const paperCv=document.createElement('canvas');paperCv.width=256;paperCv.height=330;{const g=paperCv.getContext('2d');g.fillStyle='#b9ae95';g.fillRect(0,0,256,330);g.fillStyle='rgba(40,35,25,.45)';const r=seeded(3);
+  for(let y=40;y<310;y+=18)g.fillRect(24,y,40+r()*170,4);g.fillStyle='rgba(180,40,30,.6)';g.fillRect(24,16,90,10)}
+const papers=[];[[-1.9,0.9,0.35],[2.0,-1.1,-0.28]].forEach(([x,y,r],i)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(2.6,3.3),new THREE.MeshStandardMaterial({map:tex(paperCv),roughness:.95}));m.position.set(x,y,-0.29+i*0.01);m.rotation.z=r;props.add(m);papers.push(m)});
+// nameplate (rank)
+const npCv=document.createElement('canvas');npCv.width=512;npCv.height=112;const npTex=tex(npCv);
+const nameplate=new THREE.Group();{nameplate.add(new THREE.Mesh(new THREE.BoxGeometry(2.0,0.46,0.14),std(0x4a2e1a,{roughness:.6})));
+  const f=new THREE.Mesh(new THREE.PlaneGeometry(1.9,0.4),new THREE.MeshStandardMaterial({map:npTex,roughness:.4,metalness:.3}));f.position.z=0.075;nameplate.add(f);nameplate.position.z=-0.22;props.add(nameplate)}
+function drawPlate(){const g=npCv.getContext('2d');const gr=g.createLinearGradient(0,0,0,112);gr.addColorStop(0,'#e3c56a');gr.addColorStop(1,'#a8862f');g.fillStyle=gr;g.fillRect(0,0,512,112);
+  g.fillStyle='#2a1d0e';g.textAlign='center';g.textBaseline='middle';g.font=`900 54px ${DISPLAY}`;g.fillText(RANKS[career.rank].name.toUpperCase(),256,46);
+  g.font=`700 22px ${TYPE}`;g.fillText('MAJOR CRIME · TEAM 99',256,92);npTex.needsUpdate=true}
+// medals, loose on the desk
+const METAL={gold:0xd4af37,silver:0xc7c9cc,bronze:0xb07a3a};
+const medalMeshes={};
+MEDALS.forEach(m=>{const grp=new THREE.Group();
+  const rc=document.createElement('canvas');rc.width=64;rc.height=40;const rg=rc.getContext('2d');m.rib.forEach((c,j)=>{rg.fillStyle=c;rg.fillRect(j*64/m.rib.length,0,64/m.rib.length+1,40)});
+  const rib=new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.3),new THREE.MeshStandardMaterial({map:tex(rc),roughness:.8}));rib.position.set(0,0.21,0);grp.add(rib);
+  const om=m.metal==='om';
+  const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.05,om?4:32),std(om?0x2a4a9a:METAL[m.metal],{metalness:.85,roughness:.3}));disc.rotation.x=Math.PI/2;disc.position.set(0,-0.12,0.02);grp.add(disc);
+  if(om){const c=new THREE.Mesh(new THREE.CircleGeometry(0.07,20),std(0xd4af37,{metalness:.9,roughness:.3}));c.position.set(0,-0.12,0.05);grp.add(c)}
+  grp.position.z=-0.12;grp.visible=false;props.add(grp);medalMeshes[m.id]=grp});
+const MEDAL_SPOTS=[[1,.55,-.15,.4],[-1,.14,-1.85,.3],[1,.82,-1.45,-.3],[-1,.62,-2.3,-.35],[1,.1,-2.15,.2],[-1,.96,-2.4,.2],[1,.55,-3.25,-.25],[-1,.22,-3.45,-.15],[1,.95,-3.05,.35]];
+// gear on the desk
+const gear={stetson:badge};
+function addGear(id,obj){obj.visible=false;props.add(obj);gear[id]=obj}
+{const g=new THREE.Group();const felt=std(0x8f9590,{roughness:1});const b=new THREE.Mesh(new THREE.SphereGeometry(.32,20,14),felt);b.scale.set(1.3,.9,.7);g.add(b);
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.2,16,12),felt);h.position.set(.38,.18,.12);g.add(h);
+  const bk=new THREE.Mesh(new THREE.ConeGeometry(.06,.18,8),std(0xe0902f));bk.rotation.z=-Math.PI/2;bk.position.set(.62,.18,.12);g.add(bk);
+  g.position.z=-0.12;addGear('bird',g)}
+{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,1.2,24),std(0xb3202a,{roughness:.4})));
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.23,.23,.25,24),std(0xc7c9cc,{metalness:.8,roughness:.3}));cap.position.y=.72;g.add(cap);
+  g.rotation.z=1.2;g.position.z=-0.08;addGear('thermos',g)}
+{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.BoxGeometry(1.7,.36,.08),std(0x8a5a2b,{roughness:.9})));
+  [-.55,.55].forEach(x=>{const band=new THREE.Mesh(new THREE.BoxGeometry(.08,.4,.1),std(0x3a3a3a,{metalness:.6,roughness:.5}));band.position.x=x;g.add(band)});
+  g.rotation.z=-0.25;g.position.z=-0.25;addGear('stave',g)}
+{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.BoxGeometry(.7,.95,.06),std(0x1f2f5a,{roughness:.8})));
+  const em=new THREE.Mesh(new THREE.CircleGeometry(.15,24),std(0xd4af37,{metalness:.8,roughness:.3}));em.position.z=.035;g.add(em);
+  g.rotation.z=0.4;g.position.z=-0.26;addGear('passport',g)}
+addGear('ball',(()=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.22,24,16),std(0xcfe03a,{roughness:1}));m.position.z=-0.08;return m})());
+{const g=new THREE.Group();
+  const pts=[[-.5,1.0],[-1.25,.7],[-1.55,-.9],[-1.15,-1.0],[-.85,.15],[-.8,-1.4],[.8,-1.4],[.85,.15],[1.15,-1.0],[1.55,-.9],[1.25,.7],[.5,1.0]];
+  const sh=new THREE.Shape();sh.moveTo(pts[0][0],pts[0][1]);pts.slice(1).forEach(([x,y])=>sh.lineTo(x,y));sh.closePath();
+  g.add(new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.1,bevelEnabled:true,bevelThickness:.04,bevelSize:.05,bevelSegments:2}),std(0xa81e26,{roughness:.92})));
+  const navy=std(0x1c2340,{roughness:.8}),brass=std(0xd9b44a,{metalness:.9,roughness:.3}),leather=std(0x4a2a14,{roughness:.55});
+  const col=new THREE.Mesh(new THREE.BoxGeometry(1.0,.24,.08),navy);col.position.set(0,.9,.16);g.add(col);
+  for(let i=0;i<5;i++){const b=new THREE.Mesh(new THREE.SphereGeometry(.06,10,8),brass);b.position.set(0,.6-i*.42,.17);g.add(b)}
+  [[-1.36,-.95,.32],[1.36,-.95,-.32]].forEach(([x,y,r])=>{const c=new THREE.Mesh(new THREE.BoxGeometry(.44,.2,.06),navy);c.position.set(x,y,.15);c.rotation.z=r;g.add(c)});
+  const belt=new THREE.Mesh(new THREE.BoxGeometry(1.66,.17,.06),leather);belt.position.set(0,-.72,.17);g.add(belt);
+  const strap=new THREE.Mesh(new THREE.BoxGeometry(.13,2.0,.05),leather);strap.position.set(.12,.1,.18);strap.rotation.z=.5;g.add(strap);
+  const buckle=new THREE.Mesh(new THREE.BoxGeometry(.2,.2,.07),brass);buckle.position.set(0,-.72,.2);g.add(buckle);
+  g.position.z=-0.22;addGear('serge',g)}
+function refreshDesk(){
+  for(const id in medalMeshes)medalMeshes[id].visible=!!career.medals[id];
+  for(const id in gear)gear[id].visible=has(id);
+  drawPlate()}
+const DUST=140;const dGeo=new THREE.BufferGeometry();const dPos=new Float32Array(DUST*3);const dVel=[];
+for(let i=0;i<DUST;i++){dPos[i*3]=(Math.random()-.5)*14;dPos[i*3+1]=(Math.random()-.5)*14;dPos[i*3+2]=0.2+Math.random()*2.5;dVel.push([(Math.random()-.5)*.05,(Math.random()*.06+.01)])}
+dGeo.setAttribute('position',new THREE.BufferAttribute(dPos,3));
+scene.add(new THREE.Points(dGeo,new THREE.PointsMaterial({color:0xffc27a,size:0.035,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false})));
+
+/* ============== LAYOUT ============== */
+const slot=$('slot');
+let baseY=0,wpp=0.01,visW=10,visH=10,thrPx=100;
+function layout(){
+  const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;
+  const r=slot.getBoundingClientRect();
+  const maxW=Math.min(w-48,340),maxH=Math.max(160,r.height*0.9);
+  const cardPx=Math.min(maxH,maxW*CH/CW);
+  const Hv=CH*h/cardPx;const dist=Hv/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));
+  camera.position.set(0,0,CZ+dist);camera.lookAt(0,0,CZ);camera.updateProjectionMatrix();
+  const cy=r.top+r.height/2;baseY=(0.5-cy/h)*Hv;
+  const ratio=(dist+CZ+0.3)/dist;visH=Hv*ratio;visW=visH*camera.aspect;wpp=Hv/h;
+  thrPx=Math.min(110,cardPx*CW/CH*0.35);
+  pivot.position.set(0,baseY-PIV,CZ);deck.position.set(0,baseY,0.15);
+  const hw=visW/2,hh=visH/2;
+  // keep everything clear of the words at the top
+  const tr=document.querySelector('.top').getBoundingClientRect(),sr=document.querySelector('.script').getBoundingClientRect(),qr=qEl.getBoundingClientRect();
+  const kb=Math.max(tr.bottom,sr.bottom)+6,kl=Math.min(tr.left,qr.left)-14,kr=Math.max(tr.right,qr.right)+14;
+  const keepBottom=(0.5-kb/h)*visH,keepHalf=Math.max(Math.abs(kl-w/2),Math.abs(kr-w/2))/w*visW;
+  const inner=CW/2+0.3,span=Math.max(0.4,hw-inner);
+  const put=(o,side,f,dy,rot,r,clamp)=>{let x=side*(inner+span*f);let y=baseY+dy;
+    if(Math.abs(x)-r<keepHalf&&y+r>keepBottom)y=keepBottom-r;
+    if(clamp){x=Math.sign(x)*Math.min(Math.abs(x),hw-r-0.15);y=Math.max(y,-hh+r+0.6)}
+    o.position.x=x;o.position.y=y;o.rotation.z=rot};
+  put(hat,-1,.86,1.65,.35,2.3);
+  put(nameplate,-1,.3,-1.05,-.07,1.0);
+  put(gear.bird,-1,.74,-1.15,.5,.6);
+  put(gear.stave,-1,.42,-2.8,.45,.9);
+  donuts.visible=false;
+  put(mug,1,.62,1.45,0,.75);
+  put(gear.ball,1,.95,.5,0,.25);
+  put(pencil,1,.32,.35,-Math.PI/2+.12,.6);
+  put(gear.thermos,1,.8,-.6,1.05,.75);
+  put(gear.passport,1,.3,-1.25,.5,.6);
+  put(badge,1,.72,-2.1,-.25,1.1);
+  gear.serge.position.set(-hw-0.25,Math.max(baseY-2.55,-hh+0.4),gear.serge.position.z);gear.serge.rotation.z=-0.38;
+  {const blk=[[hat,2.15],[mug,.8],[badge,1.2],[nameplate,1.0],[gear.bird,.6],[gear.thermos,.7],[gear.stave,.9],[gear.passport,.6],[gear.ball,.3],[gear.serge,1.6]]
+      .map(([o,r])=>({x:o.position.x,y:o.position.y,r}));
+    [-.75,0,.75].forEach(d=>blk.push({x:pencil.position.x+d,y:pencil.position.y,r:.25}));
+    const rnd=seeded(77),cands=[],M=.42;
+    for(let i=0;i<900;i++){const x=(rnd()*2-1)*(hw-M-.1),y=(rnd()*2-1)*(hh-M-.1);
+      if(y<-hh+M+.75)continue;                                         // dark band at the bottom
+      if(Math.abs(x)-M<keepHalf+.6&&y+M>keepBottom-.6)continue;        // the words up top
+      if(Math.abs(x)<CW/2+M+.15&&Math.abs(y-baseY)<CH/2+M+.1)continue;  // the card
+      if(blk.some(b=>Math.hypot(x-b.x,y-b.y)<b.r+M+.05))continue;      // other props
+      cands.push([x,y])}
+    const placed=[];
+    MEDALS.forEach((m,i)=>{const o=medalMeshes[m.id];let best=null,bd=-1;
+      for(const c of cands){let d=Infinity;for(const q of placed)d=Math.min(d,Math.hypot(c[0]-q[0],c[1]-q[1]));
+        for(const b of blk)d=Math.min(d,(Math.hypot(c[0]-b.x,c[1]-b.y)-b.r)*1.6);if(d>bd){bd=d;best=c}}
+      if(best&&(placed.length===0||bd>.95)){placed.push(best);o.position.x=best[0];o.position.y=best[1];o.rotation.z=(rnd()-.5)*.8}
+      else{const sp=MEDAL_SPOTS[i];put(o,sp[0],sp[1],sp[2],sp[3],.45,true)}})}
+  put(papers[0],-1,0,0.2,0.35,1.9);put(papers[1],1,0,-0.8,-0.28,1.9);
+  lamp.position.set(-hw,hh,5)}
+window.addEventListener('resize',layout);
+
+/* ============== INTERACTION ============== */
+const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const anim={mode:'enter',t:0,dx:0,dragging:false,x:0,rz:0,lift:0,vx:0,side:null,kb:null,pending:null};
+function setSide(side){if(side===anim.side)return;anim.side=side;drawFront(side);previewDots(side)}
+let startX=0,pid=null;
+canvas.addEventListener('pointerdown',e=>{if(anim.mode!=='idle'||openModal)return;pid=e.pointerId;canvas.setPointerCapture(pid);startX=e.clientX;anim.dragging=true;anim.kb=null;anim.mode='drag'});
+canvas.addEventListener('pointermove',e=>{if(!anim.dragging||e.pointerId!==pid)return;anim.dx=e.clientX-startX;setSide(Math.abs(anim.dx)>16?(anim.dx<0?'L':'R'):null)});
+const release=e=>{if(!anim.dragging||e.pointerId!==pid)return;anim.dragging=false;
+  if(Math.abs(anim.dx)>thrPx)commit(anim.dx<0?'L':'R');else{anim.dx=0;anim.mode='idle';setSide(null)}};
+canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);
+window.addEventListener('keydown',e=>{
+  if(openModal){if(e.key==='Escape'&&openModal.id!=='summary')hide();return}
+  if((e.key==='Enter'||e.key===' ')&&e.target&&e.target.closest&&e.target.closest('button'))return;
+  const k=e.key==='ArrowLeft'?'L':e.key==='ArrowRight'?'R':null;
+  if(k)e.preventDefault();
+  if(e.repeat||anim.mode!=='idle')return;           // held keys never commit
+  if(k){if(anim.kb===k){commit(k)}else{anim.kb=k;anim.dx=(k==='L'?-1:1)*thrPx*0.7;setSide(k)}}
+  else if(e.key==='Enter'&&anim.kb){commit(anim.kb)}
+  else if(e.key==='Escape'){anim.kb=null;anim.dx=0;setSide(null)}
+});
+function commit(side){
+  const card=byId[state.cardId];
+  anim.mode='fly';anim.kb=null;anim.vx=(side==='L'?-1:1)*(visW*2.4);previewDots(null);qEl.classList.add('fade');
+  if(card.end){const run=state;state=freshRun();state.cardId=card.id;anim.pending={id:'intro',prevWho:null,summary:[card.end,run]};saveCareer();return}
+  const next=choose(side);
+  anim.pending={id:next.id,prevWho:card.who};saveCareer();renderHud();
+}
+function meet(w){const first=!career.met[w];career.met[w]=(career.met[w]||0)+1;
+  state.newContact=first?w:null;if(first)saveCareer()}
+function enterCard(){
+  const p=anim.pending;anim.pending=null;
+  state.lastWho=p.prevWho;state.cardId=p.id;meet(byId[p.id].who);
+  anim.side=null;drawFront(null);renderText();renderHud();qEl.classList.remove('fade');
+  anim.mode='enter';anim.t=0;anim.dx=0;anim.x=0;anim.rz=0;
+  if(p.summary)showSummary(p.summary[0],p.summary[1]);
+}
+
+/* ============== LOOP ============== */
+const clock=new THREE.Clock();
+function frame(){
+  const dt=Math.min(clock.getDelta(),0.05),T=clock.elapsedTime;
+  if(anim.mode==='drag'||anim.mode==='idle'){
+    const tx=anim.dx*wpp,k=anim.mode==='drag'?0.35:0.14;
+    anim.x+=(tx-anim.x)*k;anim.rz+=(-anim.x*0.045-anim.rz)*k;
+    anim.lift+=(((anim.mode==='drag'||anim.kb)?0.35:0)-anim.lift)*0.15;
+    cardObj.rotation.y=reduce||anim.mode!=='idle'?0:Math.sin(T*0.9)*0.025;
+  }else if(anim.mode==='fly'){
+    anim.x+=anim.vx*dt;anim.rz=-anim.x*0.06;anim.lift+=(0.6-anim.lift)*0.1;
+    if(Math.abs(anim.x)>visW*0.95||reduce)enterCard();
+  }else if(anim.mode==='enter'){
+    anim.t+=dt/(reduce?0.01:0.55);const t=Math.min(1,anim.t),e=1-Math.pow(1-t,3);
+    cardObj.rotation.y=-Math.PI*(1-e);anim.lift=0.9*(1-e);anim.x=0;anim.rz=0;
+    if(t>=1){anim.mode='idle';cardObj.rotation.y=0}
+  }
+  pivot.position.x=anim.x;pivot.rotation.z=anim.rz;pivot.position.z=CZ+anim.lift;
+  cardShadow.position.set(anim.x+0.18+anim.lift*0.3,baseY-0.22-anim.lift*0.3,-0.27);
+  const sc=1+anim.lift*0.18;cardShadow.scale.set(sc,sc,1);cardShadow.rotation.z=anim.rz*0.8;cardShadow.material.opacity=0.6-anim.lift*0.3;
+  if(!reduce){const a=dGeo.attributes.position.array;for(let i=0;i<DUST;i++){a[i*3]+=dVel[i][0]*dt+Math.sin(T*.3+i)*0.0015;a[i*3+1]+=dVel[i][1]*dt;
+      if(a[i*3+1]>visH/2+1){a[i*3+1]=-visH/2-1;a[i*3]=(Math.random()-.5)*visW}}dGeo.attributes.position.needsUpdate=true}
+  if(shine.visible){holoMat.uniforms.uTime.value=reduce?0:T;holoMat.uniforms.uTilt.value=anim.x*0.12+anim.rz*1.5+cardObj.rotation.y*2+(reduce?0:Math.sin(T*0.5)*0.06)}
+  renderer.render(scene,camera);requestAnimationFrame(frame)}
+
+/* ============== BOOT ============== */
+function start(saved){
+  state=freshRun();
+  if(saved&&saved.m&&byId[saved.cardId]&&!byId[saved.cardId].end)Object.assign(state,saved);
+  else if(career.run&&career.run.m&&byId[career.run.cardId]&&!byId[career.run.cardId].end)Object.assign(state,JSON.parse(JSON.stringify(career.run)));
+  else if(!career.tutorial){state.cardId='t1';state.queue=['t2','t3','t4','t5','t6','t7'].map(id=>({id,at:0}))}
+  drawBack();refreshDesk();layout();anim.side=null;meet(byId[state.cardId].who);drawFront(null);renderText();renderHud();
+  anim.mode='enter';anim.t=0;requestAnimationFrame(frame);
+  if(!career.tutorial&&!saved)setTimeout(()=>toast('Orientation','Drag the file left or right to answer.'),900);
+}
+try{window.claude?.hot?.snapshot?.(()=>JSON.parse(JSON.stringify(state)))}catch(e){}
+const fontsReady=Promise.race([
+  Promise.all([document.fonts.load(`900 60px "Big Shoulders Display"`),document.fonts.load(`700 24px "Courier Prime"`),document.fonts.load(`400 18px "Courier Prime"`)]),
+  new Promise(r=>setTimeout(r,2500))]).catch(()=>{});
+fontsReady.then(()=>{
+  const boot=d=>start(d&&d.m?d:null);
+  window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});
+});
+})();
+</script>
+
+</body>
+</html>
